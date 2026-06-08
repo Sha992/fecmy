@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FECMY Children Ministry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<style>
+:root {
+  --navy-900:#021A2B;--navy-800:#03273F;--navy-700:#0A3956;--navy-600:#14506F;
+  --navy-500:#2E6A88;--navy-300:#8FB2C6;--navy-100:#D6E4ED;--navy-50:#EDF3F7;
+  --coral-500:#EF6F5E;--coral-100:#FCE0DB;
+  --leaf-500:#4C9A6B;--leaf-100:#DCEDE2;
+  --sky-500:#4DA3C4;--sky-100:#DBEEF4;
+  --grape-500:#8E6FB0;--grape-100:#E9E2F1;
+  --cream-50:#FBF7F0;--cream-100:#F5EEE2;
+  --paper:#FFFFFF;
+  --ink-900:#1C1A17;--ink-700:#44403A;--ink-500:#6E6960;--ink-400:#938D82;
+  --ink-300:#C2BCB1;--ink-200:#E3DDD2;--ink-100:#EFEAE0;
+  --success-500:#3F9B6A;--success-100:#DCEDE2;
+  --warning-500:#E0961F;--warning-100:#FBEBCB;
+  --danger-500:#D6534A;--danger-100:#FADEDB;
+  --surface-app:var(--cream-50);--surface-card:var(--paper);
+  --surface-sunken:var(--cream-100);
+  --text-strong:var(--ink-900);--text-body:var(--ink-700);
+  --text-muted:var(--ink-500);--text-subtle:var(--ink-400);
+  --border-soft:var(--ink-200);--border-default:var(--ink-300);
+  --font-sans:'Inter',system-ui,sans-serif;
+  --text-xs:.75rem;--text-sm:.875rem;--text-md:1rem;--text-lg:1.125rem;
+  --text-xl:1.375rem;--text-2xl:1.75rem;--text-3xl:2.25rem;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;
+  --space-5:24px;--space-6:32px;--space-7:48px;--space-8:64px;
+  --radius-sm:8px;--radius-md:12px;--radius-lg:16px;
+  --radius-xl:20px;--radius-2xl:24px;--radius-pill:999px;
+  --shadow-xs:0 1px 2px rgba(3,39,63,.06);
+  --shadow-sm:0 2px 6px rgba(3,39,63,.08);
+  --shadow-md:0 6px 18px rgba(3,39,63,.10);
+  --shadow-lg:0 14px 34px rgba(3,39,63,.14);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font-sans);background:var(--surface-app);color:var(--text-body);
+  min-height:100dvh;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+input,textarea,select,button{font-family:var(--font-sans)}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--ink-300);border-radius:2px}
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;background:var(--paper);
+  border-top:1.5px solid var(--border-soft);display:flex;z-index:100;
+  padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -4px 16px rgba(3,39,63,.06);
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 4px;border:none;background:none;cursor:pointer;
+  font-family:var(--font-sans);font-size:10px;font-weight:600;
+  letter-spacing:.02em;color:var(--text-muted);transition:color 120ms ease;
+}
+.nav-btn.active{color:var(--navy-800)}
+.page{padding-bottom:calc(70px + env(safe-area-inset-bottom));min-height:100dvh}
+@media(min-width:768px){
+  .bottom-nav{display:none}
+  .page{padding-bottom:0;min-height:unset}
+  .desktop-shell{display:grid;grid-template-columns:256px 1fr;min-height:100vh}
+  .desktop-sidebar{display:flex!important}
+  .mobile-page-wrap{display:contents}
+}
+.desktop-sidebar{display:none;flex-direction:column;background:var(--navy-800);
+  padding:var(--space-5);gap:var(--space-4);position:sticky;top:0;height:100vh;overflow:hidden}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+/* ── DATA ── */
+const INITIAL_STUDENTS = [
+  'ሃሌሉያ ዳዊት','ሄኖክ አብርሃም','ልኡል ደረጄ','ማርታ ሃ/ጊዮርጊስ','ማርኮን አባይዳር',
+  'ረድሌት እድላም','ራኬብ ጌትነት','ሮቤል አክሊሉ','ሰሊሆም አበራ','ሳሙኤል ብርሃኑ',
+  'ሳሙኤል ጌቱ','ሶሊያና አለማየሁ','ሶስና ሰለሞን','በእምነት ተከተል','ቤተል አለማየሁ',
+  'ቤተልሄም ሚኪያስ','ቤተልሄም ጥላሁን','ብሌን ሙባረክ','ትንሳኤ ተስፋዬ','ናህሊ ሰይፈ',
+  'ናህሌት ሃብታሙ','ናርዶስ አስራት','ናታን ኤፍሬም','ናትናኤል አባይነህ','ኖሊታ ክንዴ',
+  'አሜን ደርጄ','አምራን ቢንያም','አሽናፊ ታደሰ','አቢጊያ ሰይፉ','አቤነዘር እሸቱ',
+  'አብርሃም ተስፋዬ','ኤልያስ ማሞ','ኤደን ታደሰ','እስራኤል ሃይሉ','እስራኤል ጌቱ',
+  'እዩኤል መኮንን','እዮሲያስ መኮነን','እዮብ ሳህሊ','ክርስቲያን ታምራት','ዮሐንስ ድምሴ',
+  'ያሬድ አየለ','ደሜ ሙባረክ','ጆን ቢልልኝ','ፋሬስ አክሊሉ','ናሆም መሳይ',
+  'ሶፎንያስ ዳንኔል','ሚኪያስ ተስፋዬ','ቤንያስ ጌታቸው','አቤኔዘር ወንዳድራሽ',
+].map((name, i) => ({ id: '_s' + i, name, age: '', parentName: '', parentPhone: '', notes: '', addedAt: '2026-06-07' }));
+
+const SK = { children:'fecmy_children', attendance:'fecmy_attendance', sessions:'fecmy_sessions' };
+
+function load(k, def) { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch{return def;} }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch{} }
+function uid() { return '_'+Math.random().toString(36).slice(2,9); }
+
+function getSundays(n=14) {
+  const d=new Date(); d.setDate(d.getDate()-d.getDay()); d.setHours(0,0,0,0);
+  return Array.from({length:n},(_,i)=>{ const x=new Date(d); x.setDate(x.getDate()-i*7); return x; });
+}
+function dk(d){ return d.toISOString().split('T')[0]; }
+function fmt(ds,opts){ return new Date(ds+'T00:00:00').toLocaleDateString('en-US',opts); }
+function fmtShort(ds){ return fmt(ds,{month:'short',day:'numeric'}); }
+function fmtFull(ds){ return fmt(ds,{weekday:'long',year:'numeric',month:'long',day:'numeric'}); }
+
+function absenceStreak(id, att) {
+  const keys = Object.keys(att).sort().reverse();
+  let n=0;
+  for(const k of keys){
+    const r=att[k];
+    if(!(id in r)) continue;
+    if(r[id]===true) break;
+    n++;
+  }
+  return n;
+}
+function attendanceRate(id, att, weeks=8) {
+  const keys=Object.keys(att).sort().reverse().slice(0,weeks);
+  const marked=keys.filter(k=>id in att[k]);
+  if(!marked.length) return null;
+  return Math.round(marked.filter(k=>att[k][id]===true).length/marked.length*100);
+}
+
+/* ── ICONS (Feather/Lucide paths) ── */
+const ICONS = {
+  'layout-dashboard':'M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 5a5 5 0 1 0 10 0 5 5 0 0 0-10 0',
+  'users':'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  'check-circle-2':'M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7l-3-3 1.414-1.414L11 12.172l4.243-4.243L16.657 9 11 15z',
+  'book-open':'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zm20 0h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
+  'user-plus':'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M12.5 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM20 8v6m3-3h-6',
+  'search':'M11 19A8 8 0 1 0 11 3a8 8 0 0 0 0 16zm10 2-4.35-4.35',
+  'plus':'M12 5v14M5 12h14',
+  'pencil':'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
+  'x':'M18 6 6 18M6 6l12 12',
+  'check':'M20 6 9 17l-5-5',
+  'check-check':'M18 7l-9 11-4-4M23 7l-9 11M15 7',
+  'circle':'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
+  'save':'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8',
+  'calendar':'M3 4h18v2H3zm0 4h18v14H3zm5 0v14m4-14v14m4-14v14M3 8h18',
+  'chevron-down':'M6 9l6 6 6-6',
+  'phone':'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z',
+  'alert-circle':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm0-7v2m0-6v4',
+  'bell-ring':'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M10.3 21a1.94 1.94 0 0 0 3.4 0m-6-13a6 6 0 0 1 .27-2M4 4 1.5 1.5M22.5 1.5 20 4',
+  'trash-2':'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
+  'download':'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+  'info':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm0-4v-4m0-4h.01',
+  'church':'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+  'percent':'M19 5 5 19M4.75 6.5a1.75 1.75 0 1 0 3.5 0 1.75 1.75 0 1 0-3.5 0M15.75 17.5a1.75 1.75 0 1 0 3.5 0 1.75 1.75 0 1 0-3.5 0',
+  'settings':'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
+  'refresh':'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
+};
+
+function Icon({ n, size=20, color, style={} }) {
+  const d = ICONS[n];
+  if(!d) return null;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color||'currentColor'} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+      style={{display:'inline-block',verticalAlign:'middle',flexShrink:0,...style}}>
+      {d.split('M').filter(Boolean).map((seg,i)=>(
+        <path key={i} d={'M'+seg} />
+      ))}
+    </svg>
+  );
+}
+
+/* ── BRAND LOGO (inlined so it always renders) ── */
+const LOGO_PATHS=[
+  "M543.24,0l141.63,124.88c-71.04,27.09-66.68,82.04-52.54,154.95l101.3-137.09,8.88,5.8c-25.47,37.08-49.8,69.25-73.25,108.41l101.95-84.79,4.13,4.3c-26.77,28.48-55.05,54.32-82.54,87.69l104.69-55.78c1.97-1.05,7.94-3.36,8.48-1.44l2.12,7.62-163.25,92.62c38.31,4.16,69.09,3.92,103.01,2.1l34.58-1.85c17.53-15.58,33.5-33.35,49.19-52.61l149.15,131.76-144.71,127.35c-20.42-30.4-43.25-44.25-75.57-51.12l-79.85-.83c-9.59-.1-19.03,2.04-27.48,6.14l159.61,89.43c-4.51,4.62-10.16,7.02-12.63,5.68-40.13-21.78-75.01-41.16-117.16-61.23l90.51,83.82c2.42,2.24,5,6.71,3.93,8.99-6.63,14.17-71.42-59.84-104.47-79.8,14.28,33.68,83.12,109.54,68.86,111.6-2.45.35-6.48-1.55-9.01-3.61l-105.1-137.36-1.96,405.16c-.05,10.11,4.82,24.54,11.61,29.78l48.29,37.3-139.05,122.12h-17.15l-30.69-29.87-103.79-91.1c35.13-18.26,58.22-47.08,59.8-85.1,1.72-41.26.83-81.38-1.31-122.79l-2.6-270.39-106.71,146.2-5.77-1.95c-8.07-2.72,46.5-72.91,59.43-103.5-34.27,25.75-59.93,51.41-88.56,76.08l-3.08-2.82,29.97-32.83,53.42-58.67-113.34,59.7-7.99-2.43c-2.45-.74,2.27-7.95,4.41-8.34l155.78-87.6c-44.16-3.62-127.26-9.15-144.31,7.12l-42.96,40.98-130.67-115.68-11.26-5.5v-10.92l38.28-31.46c27.05-23.53,50.24-48.13,81.3-69.41l-92.3,116.07,114.08,101.26,31.84-26.65c10.99-9.17,26.52-21.06,41.94-21.06h150.82s1.37,353.59,1.37,353.59l1.34,66.38c-.23,39.08-17.62,69.92-55.47,90.68l126.34,110.24,127.39-109.23-33.95-30.67c-21.57-19.49-16.55-47.97-16.59-73.34l-.4-234.49-1.15-169.93,80.18-1.71c19.42-.41,38.01-1.87,57.34.59,35.18,2.23,64.9,17.92,86.39,46.28l124.15-111.17-130.7-116.91c-15.08,34.06-44.39,52.73-80.13,51.35l-139.07-.72c7.32-85.32-29.66-157.62,56.17-197.82l-104.25-86.23c-8.12-6.71-16.23-17.51-26.71-19.38-39.21,23.89-69.17,53.7-101.73,84.76l-22.02,21.02,49.77,48.68.42,149.23c-43.52-1.1-81.4-.85-122.41.81-39.75,1.61-74.73-12.76-96.69-45.45l-10.4-5.98c-2.23-1.28.39-8.65,3.66-13.37,35.71,27.9,40.83,50.81,86.94,51.62,30.68.54,66.05.7,96.56-7.09l-153.71-86.76,2.01-7.48c.52-1.95,7.04.43,8.49,1.51l114.2,60.59c-26.77-35.43-66.18-61.59-92.09-91.81l7.01-4.03,92.35,78.74c-21.24-38.16-42.79-69.23-65.21-104.61l7.96-2.78c1.33-.47,3.55,3.33,4.66,4.85l101.11,137.85c5.65-37.83,6.79-102.74-2.56-118.4-16.38-27.42-69.64-37.73-44.91-58.37L532.94,0h10.3Z",
+  "M449.01,961.96c56.64-42.18,41.85-83.69,41.38-143.7l-2.96-374.68c-.07-8.56-10.26-16.17-17.99-16.17h-155.1c-36-.01-51.15,20.34-79.91,32.67l-81.84-73.73,78.56-86.01c3.6,1.43,11.38,5.95,13.9,9,16.93,20.53,41.94,32.19,69.27,31.52l65.68-1.61,88.36.98c12.99.14,18.25-11.85,18.03-22.74-.98-49.13,1.56-96.13-2.41-144.93-1.73-21.25-21.49-35.84-33.65-55.74l85.08-73.87,93.19,78.13c-31.08,16.67-43.97,39.74-45.04,71.81,3.07,49.09,3.45,97.26.89,148.04l106.53.91c31.26.27,62.73,6.63,93.46-2.05,19.85-5.6,36.17-18.84,55.29-30.52l88.35,76.79-93.74,81.43c-13.08-23.27-35.06-39.94-62.67-39.92l-171.56.16c-8.54,0-16.2,9.98-16.17,18.25l.5,134.79.38,325.24c.04,31.02,32.12,33.03,44.64,54.89l-90.99,75.93-89.45-74.88Z",
+];
+function Logo({ color='var(--navy-800)', size=44, style={} }) {
+  return (
+    <svg viewBox="0 0 1080 1080" width={size} height={size} fill={color}
+      style={{display:'block',flexShrink:0,...style}}>
+      {LOGO_PATHS.map((d,i)=><path key={i} d={d} />)}
+    </svg>
+  );
+}
+
+/* ── DESIGN SYSTEM COMPONENTS ── */
+function Btn({ variant='primary', size='md', full, disabled, iL, iR, onClick, children, style={} }) {
+  const sz = {sm:{f:'var(--text-sm)',p:'8px 14px',g:6,r:'var(--radius-md)'},
+               md:{f:'var(--text-md)',p:'11px 20px',g:8,r:'var(--radius-md)'},
+               lg:{f:'var(--text-lg)',p:'14px 24px',g:10,r:'var(--radius-lg)'}}[size]||{f:'var(--text-md)',p:'11px 20px',g:8,r:'var(--radius-md)'};
+  const vs = {
+    primary:{bg:'var(--navy-800)',fg:'var(--cream-50)',border:'1px solid var(--navy-800)'},
+    accent:{bg:'var(--cream-50)',fg:'var(--navy-900)',border:'1px solid var(--cream-50)',boxShadow:'var(--shadow-md)'},
+    secondary:{bg:'var(--surface-card)',fg:'var(--navy-800)',border:'1.5px solid var(--navy-800)'},
+    ghost:{bg:'transparent',fg:'var(--navy-700)',border:'1px solid transparent'},
+    danger:{bg:'var(--danger-500)',fg:'#fff',border:'1px solid var(--danger-500)'},
+    leaf:{bg:'var(--leaf-100)',fg:'#2F6B47',border:'1px solid var(--leaf-100)'},
+  }[variant]||{bg:'var(--navy-800)',fg:'var(--cream-50)',border:'1px solid var(--navy-800)'};
+  return (
+    <button disabled={disabled} onClick={onClick} style={{
+      display:'inline-flex',alignItems:'center',justifyContent:'center',
+      gap:sz.g,fontFamily:'var(--font-sans)',fontWeight:600,
+      fontSize:sz.f,padding:sz.p,borderRadius:sz.r,
+      cursor:disabled?'not-allowed':'pointer',width:full?'100%':'auto',
+      opacity:disabled?.5:1,lineHeight:1.1,whiteSpace:'nowrap',
+      transition:'transform 120ms ease,filter 120ms ease',
+      background:vs.bg,color:vs.fg,border:vs.border,boxShadow:vs.boxShadow||'none',
+      ...style,
+    }}
+      onMouseEnter={e=>{if(!disabled)e.currentTarget.style.filter='brightness(1.06)';}}
+      onMouseLeave={e=>{e.currentTarget.style.filter='none';e.currentTarget.style.transform='scale(1)';}}
+      onMouseDown={e=>{if(!disabled)e.currentTarget.style.transform='scale(0.97)';}}
+      onMouseUp={e=>{e.currentTarget.style.transform='scale(1)';}}
+    >{iL}{children}{iR}</button>
+  );
+}
+
+function Badge({ tone='navy', size='md', children, style={} }) {
+  const t={navy:{bg:'var(--navy-100)',fg:'var(--navy-800)'},
+            coral:{bg:'var(--coral-100)',fg:'#B23A2C'},leaf:{bg:'var(--leaf-100)',fg:'#2F6B47'},
+            sky:{bg:'var(--sky-100)',fg:'#286179'},grape:{bg:'var(--grape-100)',fg:'#5C4480'},
+            success:{bg:'var(--success-100)',fg:'#2F6B47'},warning:{bg:'var(--warning-100)',fg:'#9A6A12'},
+            danger:{bg:'var(--danger-100)',fg:'#A93B33'},neutral:{bg:'var(--ink-100)',fg:'var(--ink-700)'},
+           }[tone]||{bg:'var(--navy-100)',fg:'var(--navy-800)'};
+  const s=size==='sm'?{fontSize:'11px',padding:'2px 7px'}:{fontSize:'var(--text-xs)',padding:'4px 10px'};
+  return <span style={{display:'inline-flex',alignItems:'center',gap:4,background:t.bg,color:t.fg,
+    borderRadius:'var(--radius-pill)',fontWeight:600,whiteSpace:'nowrap',...s,...style}}>{children}</span>;
+}
+
+function Av({ name='', size='md', style={} }) {
+  const dim={xs:26,sm:34,md:42,lg:54}[size]||42;
+  const cols=['#EF6F5E','#4C9A6B','#4DA3C4','#8E6FB0','#2E6A88','#0A3956'];
+  const init=name.split(' ').filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase()||'?';
+  const bg=cols[[...name].reduce((a,c)=>a+c.charCodeAt(0),0)%cols.length];
+  return <div style={{width:dim,height:dim,borderRadius:'50%',flexShrink:0,display:'inline-flex',
+    alignItems:'center',justifyContent:'center',background:bg,color:'#fff',fontWeight:700,
+    fontSize:dim*.38,userSelect:'none',boxShadow:'inset 0 0 0 2px rgba(255,255,255,.2)',...style}}>
+    {init}
+  </div>;
+}
+
+function StatTile({ icon, value, label, trend=null, tone='navy' }) {
+  return (
+    <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+      borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
+      display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{width:38,height:38,borderRadius:'var(--radius-md)',display:'inline-flex',
+          alignItems:'center',justifyContent:'center',
+          background:`var(--${tone}-100)`,color:`var(--${tone}-500)`}}>
+          <Icon n={icon} size={18} />
+        </span>
+        {trend && (
+          <span style={{fontSize:11,fontWeight:700,
+            color:trend.dir==='down'?'var(--danger-500)':'var(--success-500)',
+            background:trend.dir==='down'?'var(--danger-100)':'var(--success-100)',
+            padding:'3px 8px',borderRadius:'var(--radius-pill)'}}>
+            {trend.dir==='down'?'▾':'▴'} {trend.value}
+          </span>
+        )}
+      </div>
+      <div>
+        <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-strong)',
+          letterSpacing:'-.02em',lineHeight:1,fontVariantNumeric:'tabular-nums'}}>{value}</div>
+        <div style={{fontSize:11,color:'var(--text-muted)',marginTop:5,fontWeight:500}}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function Input({ label, placeholder, value, onChange, type='text', iL, required, error, multi, rows=3, hint }) {
+  const baseStyle = {
+    width:'100%',fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',
+    padding:iL?'10px 12px 10px 42px':'10px 14px',
+    borderRadius:'var(--radius-md)',border:`1.5px solid ${error?'var(--danger-500)':'var(--border-default)'}`,
+    background:'var(--paper)',color:'var(--text-strong)',outline:'none',
+    transition:'border-color 150ms ease',
+  };
+  return (
+    <div>
+      {label && <label style={{display:'block',fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)',marginBottom:6}}>
+        {label}{required && <span style={{color:'var(--coral-500)',marginLeft:3}}>*</span>}
+      </label>}
+      <div style={{position:'relative'}}>
+        {iL && <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'var(--text-muted)',display:'flex',pointerEvents:'none'}}>{iL}</span>}
+        {multi ? <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows}
+          style={{...baseStyle,resize:'vertical'}}
+          onFocus={e=>e.target.style.borderColor='var(--navy-600)'}
+          onBlur={e=>e.target.style.borderColor=error?'var(--danger-500)':'var(--border-default)'} />
+        : <input type={type} value={value} onChange={onChange} placeholder={placeholder} style={baseStyle}
+          onFocus={e=>e.target.style.borderColor='var(--navy-600)'}
+          onBlur={e=>e.target.style.borderColor=error?'var(--danger-500)':'var(--border-default)'} />}
+      </div>
+      {error && <div style={{fontSize:'var(--text-xs)',color:'var(--danger-500)',marginTop:4}}>{error}</div>}
+      {hint && !error && <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:4}}>{hint}</div>}
+    </div>
+  );
+}
+
+function Modal({ open, onClose, title, children, footer }) {
+  useEffect(()=>{ document.body.style.overflow=open?'hidden':''; return()=>{document.body.style.overflow='';};}, [open]);
+  if(!open) return null;
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(2,26,43,.55)',backdropFilter:'blur(4px)',
+      display:'flex',alignItems:'flex-end',animation:'fadeIn 150ms ease'}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{width:'100%',maxWidth:600,margin:'0 auto',background:'var(--paper)',
+        borderRadius:'var(--radius-2xl) var(--radius-2xl) 0 0',maxHeight:'92dvh',
+        overflow:'hidden',display:'flex',flexDirection:'column',animation:'slideUp 200ms cubic-bezier(0.22,1,0.36,1)'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+          padding:'var(--space-5)',borderBottom:'1px solid var(--border-soft)',flexShrink:0}}>
+          <div style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)'}}>{title}</div>
+          <button onClick={onClose} style={{width:36,height:36,borderRadius:'50%',border:'none',
+            background:'var(--surface-sunken)',cursor:'pointer',display:'flex',alignItems:'center',
+            justifyContent:'center',color:'var(--text-muted)'}}>
+            <Icon n="x" size={18} />
+          </button>
+        </div>
+        <div style={{flex:1,overflowY:'auto',padding:'var(--space-5)',WebkitOverflowScrolling:'touch'}}>
+          {children}
+        </div>
+        {footer && <div style={{padding:'var(--space-4) var(--space-5)',borderTop:'1px solid var(--border-soft)',
+          display:'flex',gap:'var(--space-3)',justifyContent:'flex-end',flexShrink:0,
+          paddingBottom:'calc(var(--space-4) + env(safe-area-inset-bottom))'}}>
+          {footer}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── DASHBOARD ── */
+function Dashboard({ students, attendance, sessions, onNav, onReset }) {
+  const [showSettings, setShowSettings] = useState(false);
+  const today = dk(getSundays(1)[0]);
+  const todayAtt = attendance[today]||{};
+  const present = students.filter(s=>todayAtt[s.id]===true).length;
+  const marked = Object.keys(todayAtt).length;
+  const alerts = students.filter(s=>absenceStreak(s.id,attendance)>=3);
+  const upcoming = [...sessions].sort((a,b)=>a.date.localeCompare(b.date)).find(s=>s.date>=today);
+  const recentKeys = Object.keys(attendance).sort().reverse().slice(0,4);
+
+  // Recorded Sundays (with data), most-recent first
+  const recordedKeys = Object.keys(attendance).filter(k=>Object.keys(attendance[k]).length>0).sort().reverse();
+  const prevKey = recordedKeys.find(k=>k!==today);
+  const presentOf = k => Object.values(attendance[k]||{}).filter(Boolean).length;
+  const rateOf = k => { const r=attendance[k]||{}; const t=Object.keys(r).length; return t?Math.round(Object.values(r).filter(Boolean).length/t*100):0; };
+
+  // Week-over-week trend for "Present today"
+  let presentTrend = null;
+  if(marked>0 && prevKey){
+    const diff = present - presentOf(prevKey);
+    if(diff!==0) presentTrend = { dir: diff>0?'up':'down', value: Math.abs(diff) };
+  }
+  // Trend for attendance rate (today vs previous recorded Sunday)
+  const rateToday = marked>0 ? rateOf(today) : (prevKey?rateOf(prevKey):null);
+  let rateTrend = null;
+  if(marked>0 && prevKey){
+    const diff = rateOf(today) - rateOf(prevKey);
+    if(diff!==0) rateTrend = { dir: diff>0?'up':'down', value: Math.abs(diff)+'%' };
+  }
+
+  // Onboarding checklist — each step disappears once done
+  const hasPhones = students.some(s=>s.parentPhone);
+  const steps = [
+    { done: recordedKeys.length>0, label:'Take your first attendance', sub:'Mark who came this Sunday', icon:'check-circle-2', go:'attendance' },
+    { done: hasPhones, label:'Add parent phone numbers', sub:'So you can follow up on absences', icon:'phone', go:'students' },
+    { done: sessions.length>0, label:'Plan a lesson', sub:'Outline this week’s session', icon:'book-open', go:'sessions' },
+  ];
+  const showChecklist = students.length>0 && steps.some(s=>!s.done);
+
+  return (
+    <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
+      {/* Hero banner */}
+      <div style={{background:'var(--navy-800)',borderRadius:'0 0 var(--radius-2xl) var(--radius-2xl)',
+        padding:'var(--space-6) var(--space-5)',color:'var(--cream-50)',position:'relative',overflow:'hidden',
+        backgroundImage:'radial-gradient(120% 140% at 100% 0%,rgba(143,178,198,.2),transparent 55%)'}}>
+        <Logo color="var(--cream-50)" size={200} style={{position:'absolute',right:-30,top:-30,opacity:.06,pointerEvents:'none'}} />
+        <div style={{position:'relative'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:'var(--space-5)'}}>
+            <Logo color="var(--cream-50)" size={34} />
+            <div style={{lineHeight:1.1}}>
+              <div style={{color:'var(--cream-50)',fontWeight:800,fontSize:'var(--text-md)'}}>FECMY</div>
+              <div style={{color:'var(--navy-300)',fontSize:11,fontWeight:600}}>Children Ministry</div>
+            </div>
+            <button onClick={()=>setShowSettings(true)} aria-label="Settings" style={{marginLeft:'auto',
+              width:38,height:38,borderRadius:'50%',border:'1px solid rgba(251,247,240,.2)',
+              background:'rgba(251,247,240,.08)',color:'var(--cream-50)',cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <Icon n="settings" size={18} />
+            </button>
+          </div>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--navy-100)'}}>
+            {fmtFull(today)}
+          </div>
+          <h1 style={{fontSize:'var(--text-2xl)',fontWeight:800,marginTop:6,letterSpacing:'-.02em',lineHeight:1.15}}>
+            Good {new Date().getHours()<12?'morning':'afternoon'}
+          </h1>
+          <p style={{fontSize:'var(--text-sm)',color:'var(--navy-100)',marginTop:4,lineHeight:1.5}}>
+            {students.length} students · {marked>0?`${present} checked in today`:'No attendance yet today'}
+          </p>
+          <div style={{display:'flex',gap:10,marginTop:16,flexWrap:'wrap'}}>
+            <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>
+              Take attendance
+            </Btn>
+            <Btn variant="ghost" size="sm" onClick={()=>onNav('students')}
+              style={{color:'var(--cream-50)',borderColor:'rgba(251,247,240,.3)'}}>
+              View students
+            </Btn>
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:'var(--space-4) var(--space-4) 0'}}>
+        {/* Stats — StatTile from the design system, 2×2 grid */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-3)',marginTop:'var(--space-4)'}}>
+          <StatTile icon="users" value={students.length} label="Students enrolled" tone="navy" />
+          <StatTile icon="check-circle-2" value={marked>0?present:'—'} label="Present today" tone="leaf" trend={presentTrend} />
+          <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?'Attendance today':'Last attendance'} tone="sky" trend={rateTrend} />
+          <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'} />
+        </div>
+
+        {/* Getting-started checklist — fades away as steps are done */}
+        {showChecklist && (
+          <div style={{marginTop:'var(--space-4)',background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+            borderRadius:'var(--radius-lg)',boxShadow:'var(--shadow-xs)',overflow:'hidden'}}>
+            <div style={{padding:'var(--space-4) var(--space-4) 0'}}>
+              <div style={{fontSize:'var(--text-md)',fontWeight:800,color:'var(--text-strong)'}}>Get set up</div>
+              <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:2}}>
+                {steps.filter(s=>s.done).length} of {steps.length} done
+              </div>
+            </div>
+            <div style={{marginTop:'var(--space-3)'}}>
+              {steps.map((st,i)=>(
+                <button key={st.label} onClick={()=>!st.done&&onNav(st.go)} disabled={st.done}
+                  style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 16px',
+                    border:'none',borderTop:'1px solid var(--border-soft)',
+                    background:st.done?'var(--surface-sunken)':'transparent',
+                    cursor:st.done?'default':'pointer',textAlign:'left',fontFamily:'var(--font-sans)'}}>
+                  <span style={{width:30,height:30,borderRadius:'50%',flexShrink:0,display:'flex',
+                    alignItems:'center',justifyContent:'center',
+                    background:st.done?'var(--leaf-500)':'var(--navy-50)',
+                    color:st.done?'#fff':'var(--navy-600)'}}>
+                    <Icon n={st.done?'check':st.icon} size={15} />
+                  </span>
+                  <span style={{flex:1,minWidth:0}}>
+                    <span style={{display:'block',fontWeight:600,fontSize:'var(--text-sm)',
+                      color:st.done?'var(--text-muted)':'var(--text-strong)',
+                      textDecoration:st.done?'line-through':'none'}}>{st.label}</span>
+                    {!st.done&&<span style={{display:'block',fontSize:11,color:'var(--text-muted)',marginTop:1}}>{st.sub}</span>}
+                  </span>
+                  {!st.done&&<Icon n="chevron-down" size={16} color="var(--text-subtle)" style={{transform:'rotate(-90deg)'}} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Absence alerts */}
+        {alerts.length>0 && (
+          <div style={{marginTop:'var(--space-4)',background:'var(--coral-100)',borderRadius:'var(--radius-lg)',
+            padding:'var(--space-4)',border:'1px solid rgba(239,111,94,.2)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,color:'#B23A2C'}}>
+              <Icon n="alert-circle" size={17} />
+              <span style={{fontWeight:700,fontSize:'var(--text-sm)'}}>
+                {alerts.length} student{alerts.length>1?'s':''} absent 3+ consecutive Sundays
+              </span>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {alerts.map(s=>(
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper)',
+                  borderRadius:'var(--radius-md)',padding:'10px 12px'}}>
+                  <Av name={s.name} size="sm" />
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:'var(--text-sm)',color:'var(--text-strong)',
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+                    <div style={{fontSize:11,color:'var(--text-muted)'}}>{absenceStreak(s.id,attendance)} Sundays missed</div>
+                  </div>
+                  {s.parentPhone ? (
+                    <a href={`tel:${s.parentPhone}`} style={{textDecoration:'none',display:'flex',alignItems:'center',
+                      justifyContent:'center',width:34,height:34,borderRadius:'50%',background:'var(--coral-500)',color:'#fff'}}>
+                      <Icon n="phone" size={15} />
+                    </a>
+                  ) : (
+                    <button onClick={()=>onNav('students')} style={{fontSize:11,fontWeight:600,color:'#B23A2C',
+                      background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-sans)'}}>Add phone</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming session */}
+        {upcoming && (
+          <div style={{marginTop:'var(--space-4)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:8,
+              letterSpacing:'.05em',textTransform:'uppercase'}}>Next session</div>
+            <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+              borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
+              display:'flex',gap:12,alignItems:'flex-start'}}>
+              <div style={{width:44,height:44,borderRadius:'var(--radius-md)',background:'var(--navy-50)',
+                display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'var(--navy-700)'}}>
+                <Icon n="book-open" size={20} />
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,color:'var(--text-strong)'}}>{upcoming.title}</div>
+                {upcoming.scripture && <div style={{fontSize:'var(--text-sm)',color:'var(--navy-600)',fontWeight:600,marginTop:2}}>{upcoming.scripture}</div>}
+                <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:4}}>{fmtShort(upcoming.date)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recent attendance */}
+        {recentKeys.length>0 && (
+          <div style={{marginTop:'var(--space-4)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',textTransform:'uppercase'}}>Recent attendance</div>
+              <button onClick={()=>onNav('attendance')} style={{background:'none',border:'none',cursor:'pointer',
+                fontSize:'var(--text-xs)',color:'var(--navy-600)',fontWeight:600,fontFamily:'var(--font-sans)'}}>View all →</button>
+            </div>
+            <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+              borderRadius:'var(--radius-lg)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
+              {recentKeys.map((ds,i)=>{
+                const r=attendance[ds];
+                const p=Object.values(r).filter(Boolean).length;
+                const t=Object.keys(r).length;
+                const pct=t?Math.round(p/t*100):0;
+                return <div key={ds} style={{display:'flex',alignItems:'center',gap:12,
+                  padding:'12px 16px',borderBottom:i<recentKeys.length-1?'1px solid var(--border-soft)':'none'}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)'}}>{fmtShort(ds)}</div>
+                    <div style={{fontSize:11,color:'var(--text-muted)'}}>{p}/{t} present</div>
+                  </div>
+                  <div style={{width:72,height:5,borderRadius:3,background:'var(--surface-sunken)',overflow:'hidden'}}>
+                    <div style={{width:pct+'%',height:'100%',background:pct>=80?'var(--leaf-500)':pct>=60?'var(--sky-500)':'var(--coral-500)',borderRadius:3,transition:'width 300ms ease'}} />
+                  </div>
+                  <div style={{fontSize:'var(--text-xs)',fontWeight:700,color:'var(--text-strong)',width:28,textAlign:'right'}}>{pct}%</div>
+                </div>;
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {students.length===0 && (
+          <div style={{marginTop:'var(--space-5)',textAlign:'center',padding:'var(--space-7) var(--space-5)'}}>
+            <div style={{width:60,height:60,borderRadius:'var(--radius-xl)',background:'var(--navy-50)',display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:14}}>
+              <Icon n="users" size={26} color="var(--navy-600)" />
+            </div>
+            <div style={{fontWeight:700,fontSize:'var(--text-lg)',color:'var(--text-strong)'}}>Add your first student</div>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:6,maxWidth:'32ch',margin:'6px auto 0'}}>Go to Students to add your class members</div>
+            <Btn variant="primary" onClick={()=>onNav('students')} style={{marginTop:16}} iL={<Icon n="user-plus" size={16} />}>Add students</Btn>
+          </div>
+        )}
+
+        <div style={{height:16}} />
+      </div>
+
+      <SettingsSheet open={showSettings} onClose={()=>setShowSettings(false)} onReset={onReset}
+        students={students} attendance={attendance} sessions={sessions} />
+    </div>
+  );
+}
+
+function SettingsSheet({ open, onClose, onReset, students, attendance, sessions }) {
+  const [confirm,setConfirm]=useState(false);
+  useEffect(()=>{ if(!open) setConfirm(false); },[open]);
+  const recorded=Object.keys(attendance).filter(k=>Object.keys(attendance[k]).length>0).length;
+
+  const exportCsv=()=>{
+    const dates=Object.keys(attendance).filter(k=>Object.keys(attendance[k]).length>0).sort();
+    const head=['Name','Phone',...dates.map(fmtShort)].join(',');
+    const rows=students.map(s=>{
+      const cells=dates.map(d=>attendance[d][s.id]===true?'P':attendance[d][s.id]===false?'A':'');
+      return ['"'+s.name+'"','"'+(s.parentPhone||'')+'"',...cells].join(',');
+    });
+    const csv=[head,...rows].join('\n');
+    const blob=new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='fecmy-attendance.csv'; a.click();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Settings"
+      footer={<Btn variant="ghost" size="sm" onClick={onClose}>Done</Btn>}>
+      <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        <div style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-md)',padding:'var(--space-4)'}}>
+          <div style={{fontSize:'var(--text-sm)',fontWeight:700,color:'var(--text-strong)',marginBottom:8}}>This device holds</div>
+          <div style={{display:'flex',gap:20}}>
+            {[[students.length,'students'],[recorded,'Sundays recorded'],[sessions.length,'sessions']].map(([n,l])=>(
+              <div key={l}>
+                <div style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--navy-800)',lineHeight:1}}>{n}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Btn variant="secondary" full iL={<Icon n="download" size={16} />} onClick={exportCsv}>Export attendance (CSV)</Btn>
+
+        <div style={{borderTop:'1px solid var(--border-soft)',paddingTop:'var(--space-4)'}}>
+          <div style={{fontSize:'var(--text-sm)',fontWeight:700,color:'var(--text-strong)'}}>Start fresh</div>
+          <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:4,lineHeight:1.5}}>
+            Clears all attendance and sessions and restores the original 49-student roster. This cannot be undone — export first if you want a copy.
+          </div>
+          {!confirm ? (
+            <Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginTop:10,paddingLeft:0}}
+              iL={<Icon n="refresh" size={15} />} onClick={()=>setConfirm(true)}>Reset everything</Btn>
+          ) : (
+            <div style={{display:'flex',gap:8,marginTop:10,alignItems:'center',flexWrap:'wrap'}}>
+              <span style={{fontSize:'var(--text-sm)',color:'var(--danger-500)',fontWeight:600}}>Erase all data?</span>
+              <Btn variant="danger" size="sm" onClick={onReset}>Yes, start fresh</Btn>
+              <Btn variant="ghost" size="sm" onClick={()=>setConfirm(false)}>Cancel</Btn>
+            </div>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ── STUDENTS ── */
+function Students({ students, attendance, onAdd, onEdit, onDelete }) {
+  const [q,setQ]=useState('');
+  const [editId,setEditId]=useState(null);
+  const [showForm,setShowForm]=useState(false);
+  const filtered=students.filter(s=>s.name.toLowerCase().includes(q.toLowerCase())||(s.parentName||'').toLowerCase().includes(q.toLowerCase()));
+  const editing=students.find(s=>s.id===editId);
+
+  return (
+    <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
+      <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
+          <div>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Students</h1>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{students.length} enrolled</div>
+          </div>
+          <Btn variant="primary" size="sm" iL={<Icon n="user-plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>Add</Btn>
+        </div>
+        <div style={{position:'relative'}}>
+          <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',display:'flex',color:'var(--text-muted)'}}>
+            <Icon n="search" size={17} />
+          </span>
+          <input type="search" placeholder="Search students or parents…" value={q} onChange={e=>setQ(e.target.value)}
+            style={{width:'100%',padding:'10px 12px 10px 40px',borderRadius:'var(--radius-md)',
+              border:'1.5px solid var(--border-default)',background:'var(--paper)',
+              fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',color:'var(--text-strong)',outline:'none'}}
+            onFocus={e=>e.target.style.borderColor='var(--navy-600)'}
+            onBlur={e=>e.target.style.borderColor='var(--border-default)'}
+          />
+        </div>
+      </div>
+
+      <div style={{padding:'0 var(--space-4)'}}>
+        {filtered.length===0 && (
+          <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}}>
+            {q?'No students match your search':'No students yet — tap Add to get started'}
+          </div>
+        )}
+        {filtered.map(s=>{
+          const streak=absenceStreak(s.id,attendance);
+          const rate=attendanceRate(s.id,attendance);
+          return (
+            <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
+              background:'var(--surface-card)',borderRadius:'var(--radius-lg)',marginBottom:'var(--space-3)',
+              border:'1px solid var(--border-soft)',boxShadow:'var(--shadow-xs)'}}>
+              <Av name={s.name} size="md" />
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                  <span style={{fontWeight:700,color:'var(--text-strong)',fontSize:'var(--text-md)'}}>{s.name}</span>
+                  {streak>=3 && <Badge tone="coral" size="sm"><Icon n="alert-circle" size={11} style={{marginRight:2}} />Absent {streak}×</Badge>}
+                </div>
+                <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:2}}>
+                  {s.age?`Age ${s.age} · `:''}
+                  {s.parentName||<span style={{fontStyle:'italic'}}>No parent info</span>}
+                </div>
+                {rate!==null && (
+                  <div style={{display:'flex',alignItems:'center',gap:6,marginTop:6}}>
+                    <div style={{flex:1,height:4,borderRadius:2,background:'var(--surface-sunken)',overflow:'hidden'}}>
+                      <div style={{width:rate+'%',height:'100%',background:rate>=80?'var(--leaf-500)':rate>=60?'var(--sky-500)':'var(--coral-500)',borderRadius:2}} />
+                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',flexShrink:0}}>{rate}%</span>
+                  </div>
+                )}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {s.parentPhone && (
+                  <a href={`tel:${s.parentPhone}`} style={{textDecoration:'none',width:34,height:34,borderRadius:'50%',
+                    background:'var(--leaf-100)',color:'var(--leaf-500)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    <Icon n="phone" size={15} />
+                  </a>
+                )}
+                <button onClick={()=>{setEditId(s.id);setShowForm(true);}} style={{width:34,height:34,
+                  borderRadius:'50%',border:'none',background:'var(--navy-50)',color:'var(--navy-700)',
+                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Icon n="pencil" size={14} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        <div style={{height:8}} />
+      </div>
+
+      <StudentForm open={showForm} student={editing}
+        onSave={data=>{ editId?onEdit({...data,id:editId}):onAdd(data); setShowForm(false); setEditId(null); }}
+        onDelete={editId?()=>{onDelete(editId);setShowForm(false);setEditId(null);}:null}
+        onClose={()=>{setShowForm(false);setEditId(null);}} />
+    </div>
+  );
+}
+
+function StudentForm({ open, student, onSave, onDelete, onClose }) {
+  const blank={name:'',age:'',parentName:'',parentPhone:'',notes:''};
+  const [f,setF]=useState(blank);
+  const [err,setErr]=useState({});
+  const [confirm,setConfirm]=useState(false);
+
+  useEffect(()=>{
+    if(open){
+      setF(student?{name:student.name,age:student.age||'',parentName:student.parentName||'',
+        parentPhone:student.parentPhone||'',notes:student.notes||''}:blank);
+      setErr({}); setConfirm(false);
+    }
+  },[open,student]);
+
+  const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
+  const valid=()=>{
+    const e={};
+    if(!f.name.trim()) e.name='Name is required';
+    return e;
+  };
+  const go=()=>{
+    const e=valid(); if(Object.keys(e).length){setErr(e);return;}
+    onSave({name:f.name.trim(),age:f.age?Number(f.age):'',parentName:f.parentName.trim(),parentPhone:f.parentPhone.trim(),notes:f.notes.trim()});
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={student?'Edit student':'Add student'}
+      footer={<>
+        {student&&!confirm&&<Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginRight:'auto'}} onClick={()=>setConfirm(true)}>
+          <Icon n="trash-2" size={15} style={{marginRight:4}} />Delete</Btn>}
+        {confirm&&<div style={{display:'flex',gap:8,marginRight:'auto',alignItems:'center'}}>
+          <span style={{fontSize:'var(--text-sm)',color:'var(--danger-500)',fontWeight:600}}>Remove student?</span>
+          <Btn variant="danger" size="sm" onClick={onDelete}>Remove</Btn>
+          <Btn variant="ghost" size="sm" onClick={()=>setConfirm(false)}>Cancel</Btn>
+        </div>}
+        <Btn variant="ghost" size="sm" onClick={onClose}>Cancel</Btn>
+        <Btn variant="primary" size="sm" onClick={go}>Save</Btn>
+      </>}>
+      <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        <Input label="Full name" placeholder="e.g. ሃሌሉያ ዳዊት" value={f.name} onChange={set('name')} required error={err.name} />
+        <Input label="Age" type="number" placeholder="e.g. 12" value={f.age} onChange={set('age')} hint="Ages 10–14 for this class" />
+        <Input label="Parent / guardian name" placeholder="e.g. ዳዊት ሃሌሉያ" value={f.parentName} onChange={set('parentName')} />
+        <Input label="Parent phone" type="tel" placeholder="+251 91 234 5678" value={f.parentPhone} onChange={set('parentPhone')} hint="For absence alerts. Include country code (+251…)" />
+        <Input label="Notes" placeholder="Any important notes…" value={f.notes} onChange={set('notes')} multi rows={3} />
+      </div>
+    </Modal>
+  );
+}
+
+/* ── ATTENDANCE ── */
+function Attendance({ students, attendance, onSave }) {
+  const sundays=getSundays(14);
+  const [selDate,setSelDate]=useState(dk(sundays[0]));
+  const [marks,setMarks]=useState({});
+  const [saved,setSaved]=useState(false);
+  const [showPicker,setShowPicker]=useState(false);
+
+  useEffect(()=>{
+    const ex=attendance[selDate]||{};
+    setMarks(Object.fromEntries(students.map(s=>[s.id,ex[s.id]??null])));
+    setSaved(!!Object.keys(attendance[selDate]||{}).length);
+  },[selDate,students.length]);
+
+  const toggle=id=>{
+    setSaved(false);
+    setMarks(m=>({...m,[id]:m[id]===true?false:true}));
+  };
+  const markAll=v=>{ setSaved(false); setMarks(Object.fromEntries(students.map(s=>[s.id,v]))); };
+  const present=Object.values(marks).filter(v=>v===true).length;
+  const absent=Object.values(marks).filter(v=>v===false).length;
+
+  const doSave=()=>{
+    // only save explicitly marked students
+    const toSave=Object.fromEntries(Object.entries(marks).filter(([,v])=>v!==null));
+    onSave(selDate,toSave);
+    setSaved(true);
+  };
+
+  return (
+    <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
+      <div style={{padding:'var(--space-5) var(--space-4) 0'}}>
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
+          <div>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Attendance</h1>
+            <button onClick={()=>setShowPicker(p=>!p)} style={{display:'flex',alignItems:'center',gap:5,
+              background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-sans)',
+              fontSize:'var(--text-sm)',color:'var(--navy-700)',fontWeight:600,padding:'3px 0'}}>
+              <Icon n="calendar" size={14} />{fmtShort(selDate)}<Icon n="chevron-down" size={13} />
+            </button>
+          </div>
+          <Btn variant={saved?'leaf':'primary'} size="sm"
+            iL={<Icon n={saved?'check':'save'} size={15} />} onClick={doSave}>
+            {saved?'Saved':'Save'}
+          </Btn>
+        </div>
+
+        {/* Date picker */}
+        {showPicker && (
+          <div style={{background:'var(--paper)',border:'1px solid var(--border-soft)',
+            borderRadius:'var(--radius-lg)',boxShadow:'var(--shadow-md)',marginBottom:'var(--space-4)',overflow:'hidden',maxHeight:280,overflowY:'auto'}}>
+            {sundays.map(s=>{
+              const k=dk(s); const r=attendance[k];
+              const has=r&&Object.keys(r).length>0;
+              return (
+                <button key={k} onClick={()=>{setSelDate(k);setShowPicker(false);}} style={{
+                  width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',
+                  padding:'12px 16px',background:k===selDate?'var(--navy-50)':'transparent',
+                  border:'none',borderBottom:'1px solid var(--border-soft)',cursor:'pointer',
+                  fontFamily:'var(--font-sans)',textAlign:'left'}}>
+                  <span style={{fontWeight:k===selDate?700:500,color:k===selDate?'var(--navy-800)':'var(--text-body)',fontSize:'var(--text-sm)'}}>
+                    {fmtFull(k)}
+                  </span>
+                  {has?<Badge tone="leaf" size="sm">{Object.values(r).filter(Boolean).length}/{Object.keys(r).length}</Badge>
+                      :<span style={{fontSize:11,color:'var(--text-subtle)'}}>No data</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Progress card */}
+        <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+          borderRadius:'var(--radius-lg)',padding:'var(--space-4)',marginBottom:'var(--space-4)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+            <div style={{display:'flex',gap:16}}>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--leaf-500)',lineHeight:1}}>{present}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Present</div>
+              </div>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--coral-500)',lineHeight:1}}>{absent}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Absent</div>
+              </div>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-subtle)',lineHeight:1}}>{students.length-present-absent}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Unmarked</div>
+              </div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:'var(--text-3xl)',fontWeight:800,color:'var(--navy-800)',lineHeight:1}}>
+                {students.length?Math.round(present/students.length*100):0}%
+              </div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Attendance rate</div>
+            </div>
+          </div>
+          <div style={{height:8,borderRadius:'var(--radius-pill)',background:'var(--surface-sunken)',overflow:'hidden'}}>
+            <div style={{width:(students.length?present/students.length*100:0)+'%',height:'100%',
+              background:'var(--leaf-500)',borderRadius:'var(--radius-pill)',transition:'width 300ms ease'}} />
+          </div>
+          <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}>
+            <Btn variant="ghost" size="sm" iL={<Icon n="check-check" size={14} />} onClick={()=>markAll(true)}>All present</Btn>
+            <Btn variant="ghost" size="sm" iL={<Icon n="x" size={14} />} onClick={()=>markAll(false)}>All absent</Btn>
+          </div>
+        </div>
+      </div>
+
+      {/* Roster */}
+      <div style={{padding:'0 var(--space-4)'}}>
+        {students.length===0 && <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}}>
+          Add students first to take attendance
+        </div>}
+        {students.map(s=>{
+          const st=marks[s.id];
+          const isPresent=st===true, isAbsent=st===false;
+          return (
+            <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
+              background:'var(--surface-card)',borderRadius:'var(--radius-lg)',marginBottom:'var(--space-2)',
+              border:`1.5px solid ${isPresent?'var(--leaf-500)':isAbsent?'var(--coral-500)':'var(--border-soft)'}`,
+              boxShadow:'var(--shadow-xs)',transition:'border-color 150ms ease'}}>
+              <Av name={s.name} size="md" />
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,color:'var(--text-strong)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+                {s.age&&<div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)'}}>Age {s.age}</div>}
+              </div>
+              <button onClick={()=>toggle(s.id)} style={{
+                display:'flex',alignItems:'center',gap:7,padding:'9px 14px',
+                borderRadius:'var(--radius-pill)',border:`1.5px solid ${isPresent?'var(--leaf-500)':isAbsent?'var(--coral-500)':'var(--border-default)'}`,
+                background:isPresent?'var(--leaf-100)':isAbsent?'var(--coral-100)':'var(--surface-card)',
+                color:isPresent?'#2F6B47':isAbsent?'#B23A2C':'var(--text-muted)',
+                cursor:'pointer',fontFamily:'var(--font-sans)',fontWeight:700,fontSize:'var(--text-sm)',
+                transition:'all 150ms ease',whiteSpace:'nowrap',flexShrink:0}}>
+                <Icon n={isPresent?'check':isAbsent?'x':'circle'} size={15} />
+                {isPresent?'Present':isAbsent?'Absent':'Mark'}
+              </button>
+            </div>
+          );
+        })}
+        <div style={{height:8}} />
+      </div>
+    </div>
+  );
+}
+
+/* ── SESSIONS ── */
+function Sessions({ sessions, onAdd, onEdit, onDelete }) {
+  const [showForm,setShowForm]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const sorted=[...sessions].sort((a,b)=>b.date.localeCompare(a.date));
+  const editing=sessions.find(s=>s.id===editId);
+
+  return (
+    <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
+      <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
+          <div>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Sessions</h1>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{sessions.length} lesson{sessions.length!==1?'s':''} planned</div>
+          </div>
+          <Btn variant="primary" size="sm" iL={<Icon n="plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>Plan</Btn>
+        </div>
+      </div>
+
+      <div style={{padding:'0 var(--space-4)'}}>
+        {sorted.length===0 && (
+          <div style={{textAlign:'center',padding:'var(--space-7) 0'}}>
+            <div style={{width:56,height:56,borderRadius:'var(--radius-xl)',background:'var(--navy-50)',
+              display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>
+              <Icon n="book-open" size={24} color="var(--navy-600)" />
+            </div>
+            <div style={{fontWeight:700,color:'var(--text-strong)'}}>No sessions yet</div>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:4}}>Plan your next lesson</div>
+          </div>
+        )}
+        {sorted.map(s=>(
+          <div key={s.id} style={{background:'var(--surface-card)',borderRadius:'var(--radius-lg)',
+            padding:'var(--space-4)',marginBottom:'var(--space-3)',border:'1px solid var(--border-soft)',
+            boxShadow:'var(--shadow-xs)'}}>
+            <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+              <div style={{width:44,height:44,borderRadius:'var(--radius-md)',background:'var(--navy-50)',
+                display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'var(--navy-700)'}}>
+                <Icon n="book-open" size={20} />
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,color:'var(--text-strong)'}}>{s.title}</div>
+                {s.scripture&&<div style={{fontSize:'var(--text-sm)',color:'var(--navy-600)',fontWeight:600,marginTop:2}}>{s.scripture}</div>}
+                {s.theme&&<div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:2,fontStyle:'italic'}}>{s.theme}</div>}
+                {s.notes&&<div style={{fontSize:'var(--text-sm)',color:'var(--text-body)',marginTop:6,lineHeight:1.5}}>{s.notes}</div>}
+                {s.materials&&s.materials.length>0&&(
+                  <div style={{display:'flex',flexWrap:'wrap',gap:5,marginTop:8}}>
+                    {s.materials.map((m,i)=><Badge key={i} tone="neutral" size="sm">{m}</Badge>)}
+                  </div>
+                )}
+                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:8}}>
+                  <Icon n="calendar" size={13} color="var(--text-muted)" />
+                  <span style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',fontWeight:600}}>{fmtShort(s.date)}</span>
+                </div>
+              </div>
+              <button onClick={()=>{setEditId(s.id);setShowForm(true);}} style={{width:32,height:32,
+                borderRadius:'50%',border:'none',background:'var(--navy-50)',color:'var(--navy-700)',
+                cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                <Icon n="pencil" size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
+        <div style={{height:8}} />
+      </div>
+
+      <SessionForm open={showForm} session={editing}
+        onSave={data=>{ editId?onEdit({...data,id:editId}):onAdd(data); setShowForm(false); setEditId(null); }}
+        onDelete={editId?()=>{onDelete(editId);setShowForm(false);setEditId(null);}:null}
+        onClose={()=>{setShowForm(false);setEditId(null);}} />
+    </div>
+  );
+}
+
+function SessionForm({ open, session, onSave, onDelete, onClose }) {
+  const sun=getSundays(14);
+  const blank={title:'',scripture:'',theme:'',date:dk(sun[0]),notes:'',materials:''};
+  const [f,setF]=useState(blank);
+  const [err,setErr]=useState({});
+  const [confirm,setConfirm]=useState(false);
+
+  useEffect(()=>{
+    if(open){
+      setF(session?{title:session.title,scripture:session.scripture||'',theme:session.theme||'',
+        date:session.date,notes:session.notes||'',materials:(session.materials||[]).join(', ')}:blank);
+      setErr({}); setConfirm(false);
+    }
+  },[open,session]);
+
+  const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
+  const go=()=>{
+    if(!f.title.trim()){setErr({title:'Title required'});return;}
+    onSave({title:f.title.trim(),scripture:f.scripture.trim(),theme:f.theme.trim(),date:f.date,
+      notes:f.notes.trim(),materials:f.materials.split(',').map(m=>m.trim()).filter(Boolean)});
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={session?'Edit session':'Plan session'}
+      footer={<>
+        {session&&!confirm&&<Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginRight:'auto'}} onClick={()=>setConfirm(true)}>
+          <Icon n="trash-2" size={15} style={{marginRight:4}} />Delete</Btn>}
+        {confirm&&<div style={{display:'flex',gap:8,marginRight:'auto',alignItems:'center'}}>
+          <span style={{fontSize:'var(--text-sm)',color:'var(--danger-500)',fontWeight:600}}>Remove?</span>
+          <Btn variant="danger" size="sm" onClick={onDelete}>Remove</Btn>
+          <Btn variant="ghost" size="sm" onClick={()=>setConfirm(false)}>Cancel</Btn>
+        </div>}
+        <Btn variant="ghost" size="sm" onClick={onClose}>Cancel</Btn>
+        <Btn variant="primary" size="sm" onClick={go}>Save</Btn>
+      </>}>
+      <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        <Input label="Lesson title" placeholder="e.g. The Good Samaritan" value={f.title} onChange={set('title')} required error={err.title} />
+        <Input label="Scripture" placeholder="e.g. Luke 10:25–37" value={f.scripture} onChange={set('scripture')} />
+        <Input label="Theme / main idea" placeholder="e.g. Love your neighbor" value={f.theme} onChange={set('theme')} />
+        <div>
+          <label style={{display:'block',fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)',marginBottom:6}}>
+            Date <span style={{color:'var(--coral-500)'}}>*</span>
+          </label>
+          <select value={f.date} onChange={set('date')} style={{width:'100%',padding:'10px 14px',
+            borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
+            background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',
+            color:'var(--text-strong)',outline:'none'}}>
+            {sun.map(s=>{ const k=dk(s); return <option key={k} value={k}>{fmtFull(k)}</option>; })}
+          </select>
+        </div>
+        <Input label="Notes / lesson plan" placeholder="Key points, discussion questions, activities…" value={f.notes} onChange={set('notes')} multi rows={4} />
+        <Input label="Materials needed" placeholder="Bible, worksheets, colored pencils…" value={f.materials} onChange={set('materials')} hint="Separate with commas" />
+      </div>
+    </Modal>
+  );
+}
+
+/* ── NAV ── */
+const TABS=[
+  {id:'dashboard',i:'layout-dashboard',l:'Dashboard'},
+  {id:'students',i:'users',l:'Students'},
+  {id:'attendance',i:'check-circle-2',l:'Attendance'},
+  {id:'sessions',i:'book-open',l:'Sessions'},
+];
+
+function Sidebar({ tab, onTab, count }) {
+  return (
+    <div className="desktop-sidebar">
+      <div style={{display:'flex',alignItems:'center',gap:12,paddingBottom:'var(--space-4)',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+        <Logo color="var(--cream-50)" size={40} />
+        <div>
+          <div style={{color:'var(--cream-50)',fontWeight:800,fontSize:'var(--text-md)'}}>FECMY</div>
+          <div style={{color:'var(--navy-300)',fontSize:'var(--text-xs)',fontWeight:600}}>Children Ministry</div>
+        </div>
+      </div>
+      <nav style={{display:'flex',flexDirection:'column',gap:3,flex:1}}>
+        {TABS.map(({id,i,l})=>{
+          const on=tab===id;
+          return <button key={id} onClick={()=>onTab(id)} style={{
+            display:'flex',alignItems:'center',gap:12,width:'100%',padding:'11px 14px',
+            borderRadius:'var(--radius-md)',border:'none',cursor:'pointer',
+            background:on?'var(--navy-700)':'transparent',
+            color:on?'var(--cream-50)':'var(--navy-300)',
+            fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',fontWeight:on?700:500,
+            transition:'background 120ms,color 120ms',textAlign:'left'}}
+            onMouseEnter={e=>{if(!on){e.currentTarget.style.background='rgba(255,255,255,.08)';e.currentTarget.style.color='var(--cream-50)';}}}
+            onMouseLeave={e=>{if(!on){e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--navy-300)';}}}
+          >
+            <Icon n={i} size={19} />{l}
+          </button>;
+        })}
+      </nav>
+      <div style={{padding:12,borderRadius:'var(--radius-md)',background:'var(--navy-900)'}}>
+        <div style={{fontSize:'var(--text-xs)',color:'var(--navy-300)',fontWeight:600,marginBottom:3}}>FECMY Children Ministry</div>
+        <div style={{fontSize:11,color:'var(--navy-500)'}}>{count} students enrolled</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── APP ── */
+function App() {
+  const [tab,setTab]=useState('dashboard');
+  const [students,setStudents]=useState(()=>load(SK.children,null)??INITIAL_STUDENTS);
+  const [attendance,setAttendance]=useState(()=>load(SK.attendance,{}));
+  const [sessions,setSessions]=useState(()=>load(SK.sessions,[]));
+
+  const saveS=v=>{setStudents(v);save(SK.children,v);};
+  const saveSess=v=>{setSessions(v);save(SK.sessions,v);};
+
+  const resetAll=()=>{
+    [SK.children,SK.attendance,SK.sessions].forEach(k=>{ try{localStorage.removeItem(k);}catch{} });
+    setStudents(INITIAL_STUDENTS); setAttendance({}); setSessions([]); setTab('dashboard');
+  };
+
+  const screens={
+    dashboard:<Dashboard students={students} attendance={attendance} sessions={sessions} onNav={setTab} onReset={resetAll} />,
+    students:<Students students={students} attendance={attendance}
+      onAdd={d=>saveS([...students,{...d,id:uid(),addedAt:dk(new Date())}])}
+      onEdit={d=>saveS(students.map(s=>s.id===d.id?d:s))}
+      onDelete={id=>saveS(students.filter(s=>s.id!==id))} />,
+    attendance:<Attendance students={students} attendance={attendance} onSave={(ds,marks)=>{
+      const n={...attendance,[ds]:marks};setAttendance(n);save(SK.attendance,n);
+    }} />,
+    sessions:<Sessions sessions={sessions}
+      onAdd={d=>saveSess([...sessions,{...d,id:uid()}])}
+      onEdit={d=>saveSess(sessions.map(s=>s.id===d.id?d:s))}
+      onDelete={id=>saveSess(sessions.filter(s=>s.id!==id))} />,
+  };
+
+  return (
+    <>
+      {/* Mobile */}
+      <div style={{display:'block'}} className="desktop-hidden">
+        {screens[tab]}
+        <nav className="bottom-nav">
+          {TABS.map(({id,i,l})=>(
+            <button key={id} className={`nav-btn${tab===id?' active':''}`} onClick={()=>setTab(id)}>
+              <Icon n={i} size={22} color={tab===id?'var(--navy-800)':'var(--ink-400)'} />
+              {l}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Desktop */}
+      <div className="desktop-shell" style={{display:'none'}}>
+        <Sidebar tab={tab} onTab={setTab} count={students.length} />
+        <main style={{overflowY:'auto',minWidth:0,background:'var(--surface-app)'}}>
+          {screens[tab]}
+        </main>
+      </div>
+
+      <style>{`
+        @media(min-width:768px){
+          .desktop-hidden{display:none!important}
+          .desktop-shell{display:grid!important}
+        }
+      `}</style>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
