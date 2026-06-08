@@ -92,19 +92,31 @@ const INITIAL_STUDENTS = [
   'እዩኤል መኮንን','እዮሲያስ መኮነን','እዮብ ሳህሊ','ክርስቲያን ታምራት','ዮሐንስ ድምሴ',
   'ያሬድ አየለ','ደሜ ሙባረክ','ጆን ቢልልኝ','ፋሬስ አክሊሉ','ናሆም መሳይ',
   'ሶፎንያስ ዳንኔል','ሚኪያስ ተስፋዬ','ቤንያስ ጌታቸው','አቤኔዘር ወንዳድራሽ',
-].map((name, i) => ({ id: '_s' + i, name, age: '', parentName: '', parentPhone: '', notes: '', addedAt: '2026-06-07' }));
+].map((name, i) => ({ id: '_s' + i, name, classId: 'cls_elder', age: '', parentName: '', parentPhone: '', notes: '', addedAt: '2026-06-07' }));
 
-const SK = { children:'fecmy_children', attendance:'fecmy_attendance', sessions:'fecmy_sessions' };
+// Classes — the elder class (these 49 students) plus two younger classes.
+// Everything here is editable in the Classes tab.
+const INITIAL_CLASSES = [
+  { id:'cls_elder', name:'',  ageRange:'Ages 10–14', room:'', teacher:'', tone:'navy'  },
+  { id:'cls_mid',   name:'',  ageRange:'Ages 7–9',   room:'', teacher:'', tone:'sky'   },
+  { id:'cls_young', name:'',  ageRange:'Ages 4–6',   room:'', teacher:'', tone:'coral' },
+];
+const CLASS_TONES = ['navy','sky','leaf','coral','grape'];
+const className = c => c.name && c.name.trim() ? c.name : (c.ageRange ? c.ageRange + ' class' : 'Untitled class');
+
+const SK = { children:'fecmy_children', attendance:'fecmy_attendance', sessions:'fecmy_sessions', classes:'fecmy_classes' };
 
 function load(k, def) { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch{return def;} }
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch{} }
 function uid() { return '_'+Math.random().toString(36).slice(2,9); }
 
 function getSundays(n=14) {
-  const d=new Date(); d.setDate(d.getDate()-d.getDay()); d.setHours(0,0,0,0);
+  const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-d.getDay()); // most recent Sunday (today if Sunday)
   return Array.from({length:n},(_,i)=>{ const x=new Date(d); x.setDate(x.getDate()-i*7); return x; });
 }
-function dk(d){ return d.toISOString().split('T')[0]; }
+// Local date key (YYYY-MM-DD) — NOT toISOString(), which is UTC and would
+// roll a local-midnight Sunday back to Saturday in +UTC timezones.
+function dk(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function fmt(ds,opts){ return new Date(ds+'T00:00:00').toLocaleDateString('en-US',opts); }
 function fmtShort(ds){ return fmt(ds,{month:'short',day:'numeric'}); }
 function fmtFull(ds){ return fmt(ds,{weekday:'long',year:'numeric',month:'long',day:'numeric'}); }
@@ -151,6 +163,9 @@ const ICONS = {
   'download':'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
   'info':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm0-4v-4m0-4h.01',
   'church':'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+  'door-open':'M13 4h3a2 2 0 0 1 2 2v14M2 20h20M13 4v16M13 4 7 2v18M9 11v2',
+  'chevron-right':'M9 18l6-6-6-6',
+  'arrow-right':'M5 12h14M12 5l7 7-7 7',
   'percent':'M19 5 5 19M4.75 6.5a1.75 1.75 0 1 0 3.5 0 1.75 1.75 0 1 0-3.5 0M15.75 17.5a1.75 1.75 0 1 0 3.5 0 1.75 1.75 0 1 0-3.5 0',
   'settings':'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
   'refresh':'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
@@ -269,6 +284,62 @@ function StatTile({ icon, value, label, trend=null, tone='navy' }) {
   );
 }
 
+// ClassCard — design-system style: colored top band, title, age badge,
+// teacher, and today's checked-in progress.
+function ClassCard({ cls, count, present, onClick, onEdit }) {
+  const tone = cls.tone || 'navy';
+  const ratio = count ? present/count : 0;
+  return (
+    <div onClick={onClick} style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+      borderRadius:'var(--radius-lg)',overflow:'hidden',boxShadow:'var(--shadow-sm)',
+      cursor:onClick?'pointer':'default',display:'flex',flexDirection:'column',
+      transition:'transform 200ms ease,box-shadow 200ms ease'}}
+      onMouseEnter={onClick?e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='var(--shadow-lg)';}:undefined}
+      onMouseLeave={onClick?e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='var(--shadow-sm)';}:undefined}>
+      <div style={{height:6,background:`var(--${tone}-500)`}} />
+      <div style={{padding:'var(--space-5)',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:'var(--text-lg)',fontWeight:800,color:'var(--text-strong)',
+              letterSpacing:'-.01em',overflow:'hidden',textOverflow:'ellipsis'}}>{className(cls)}</div>
+            {cls.room && <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:2}}>{cls.room}</div>}
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+            <Badge tone={tone}>{cls.ageRange||'—'}</Badge>
+            {onEdit && (
+              <button onClick={e=>{e.stopPropagation();onEdit();}} aria-label="Edit class" style={{width:30,height:30,
+                borderRadius:'50%',border:'none',background:'var(--navy-50)',color:'var(--navy-700)',
+                cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <Icon n="pencil" size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          {cls.teacher ? <Av name={cls.teacher} size="sm" /> :
+            <span style={{width:34,height:34,borderRadius:'50%',background:'var(--surface-sunken)',
+              display:'inline-flex',alignItems:'center',justifyContent:'center',color:'var(--text-subtle)'}}><Icon n="user-plus" size={15} /></span>}
+          <div style={{fontSize:'var(--text-sm)',color:'var(--text-body)'}}>
+            {cls.teacher ? <><span style={{color:'var(--text-subtle)'}}>Teacher </span>
+              <span style={{fontWeight:600,color:'var(--text-strong)'}}>{cls.teacher}</span></>
+              : <span style={{color:'var(--text-subtle)',fontStyle:'italic'}}>No teacher set</span>}
+          </div>
+        </div>
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:'var(--text-sm)',marginBottom:6}}>
+            <span style={{color:'var(--text-muted)'}}>Checked in</span>
+            <span style={{fontWeight:800,color:'var(--text-strong)',fontVariantNumeric:'tabular-nums'}}>{present} / {count}</span>
+          </div>
+          <div style={{height:8,borderRadius:'var(--radius-pill)',background:'var(--surface-sunken)',overflow:'hidden'}}>
+            <div style={{width:(ratio*100)+'%',height:'100%',background:`var(--${tone}-500)`,
+              borderRadius:'var(--radius-pill)',transition:'width 360ms ease'}} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Input({ label, placeholder, value, onChange, type='text', iL, required, error, multi, rows=3, hint }) {
   const baseStyle = {
     width:'100%',fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',
@@ -331,7 +402,7 @@ function Modal({ open, onClose, title, children, footer }) {
 }
 
 /* ── DASHBOARD ── */
-function Dashboard({ students, attendance, sessions, onNav, onReset }) {
+function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset, onOpenClass }) {
   const [showSettings, setShowSettings] = useState(false);
   const today = dk(getSundays(1)[0]);
   const todayAtt = attendance[today]||{};
@@ -453,6 +524,26 @@ function Dashboard({ students, attendance, sessions, onNav, onReset }) {
                   {!st.done&&<Icon n="chevron-down" size={16} color="var(--text-subtle)" style={{transform:'rotate(-90deg)'}} />}
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Today's classes */}
+        {classes.length>0 && students.length>0 && (
+          <div style={{marginTop:'var(--space-5)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-3)'}}>
+              <div style={{fontSize:'var(--text-lg)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.01em'}}>Today’s classes</div>
+              <button onClick={()=>onNav('classes')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',
+                alignItems:'center',gap:3,fontSize:'var(--text-xs)',color:'var(--navy-600)',fontWeight:600,fontFamily:'var(--font-sans)'}}>
+                Manage <Icon n="chevron-right" size={14} />
+              </button>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:'var(--space-3)'}}>
+              {classes.map(c=>{
+                const count=students.filter(s=>s.classId===c.id).length;
+                const pres=students.filter(s=>s.classId===c.id&&todayAtt[s.id]===true).length;
+                return <ClassCard key={c.id} cls={c} count={count} present={pres} onClick={()=>onOpenClass&&onOpenClass(c.id)} />;
+              })}
             </div>
           </div>
         )}
@@ -623,11 +714,15 @@ function SettingsSheet({ open, onClose, onReset, students, attendance, sessions 
 }
 
 /* ── STUDENTS ── */
-function Students({ students, attendance, onAdd, onEdit, onDelete }) {
+function Students({ students, classes, attendance, onAdd, onEdit, onDelete }) {
   const [q,setQ]=useState('');
+  const [classFilter,setClassFilter]=useState('all');
   const [editId,setEditId]=useState(null);
   const [showForm,setShowForm]=useState(false);
-  const filtered=students.filter(s=>s.name.toLowerCase().includes(q.toLowerCase())||(s.parentName||'').toLowerCase().includes(q.toLowerCase()));
+  const clsOf=id=>classes.find(c=>c.id===id);
+  const filtered=students.filter(s=>
+    (classFilter==='all'||s.classId===classFilter) &&
+    (s.name.toLowerCase().includes(q.toLowerCase())||(s.parentName||'').toLowerCase().includes(q.toLowerCase())));
   const editing=students.find(s=>s.id===editId);
 
   return (
@@ -640,7 +735,7 @@ function Students({ students, attendance, onAdd, onEdit, onDelete }) {
           </div>
           <Btn variant="primary" size="sm" iL={<Icon n="user-plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>Add</Btn>
         </div>
-        <div style={{position:'relative'}}>
+        <div style={{position:'relative',marginBottom:'var(--space-3)'}}>
           <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',display:'flex',color:'var(--text-muted)'}}>
             <Icon n="search" size={17} />
           </span>
@@ -652,17 +747,37 @@ function Students({ students, attendance, onAdd, onEdit, onDelete }) {
             onBlur={e=>e.target.style.borderColor='var(--border-default)'}
           />
         </div>
+        {/* Class filter */}
+        {classes.length>1 && (
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {[{id:'all',label:'All',tone:null},...classes.map(c=>({id:c.id,label:className(c),tone:c.tone}))].map(f=>{
+              const on=classFilter===f.id;
+              return (
+                <button key={f.id} onClick={()=>setClassFilter(f.id)} style={{
+                  display:'flex',alignItems:'center',gap:7,cursor:'pointer',padding:'6px 12px',
+                  borderRadius:'var(--radius-pill)',fontFamily:'var(--font-sans)',fontSize:'var(--text-xs)',
+                  border:on?'1.5px solid var(--navy-800)':'1px solid var(--border-default)',
+                  background:on?'var(--navy-800)':'var(--surface-card)',
+                  color:on?'var(--cream-50)':'var(--text-muted)',fontWeight:on?700:500}}>
+                  {f.tone&&<span style={{width:8,height:8,borderRadius:'50%',background:`var(--${f.tone}-500)`}} />}
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div style={{padding:'0 var(--space-4)'}}>
         {filtered.length===0 && (
           <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}}>
-            {q?'No students match your search':'No students yet — tap Add to get started'}
+            {q||classFilter!=='all'?'No students match':'No students yet — tap Add to get started'}
           </div>
         )}
         {filtered.map(s=>{
           const streak=absenceStreak(s.id,attendance);
           const rate=attendanceRate(s.id,attendance);
+          const sc=clsOf(s.classId);
           return (
             <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
               background:'var(--surface-card)',borderRadius:'var(--radius-lg)',marginBottom:'var(--space-3)',
@@ -671,6 +786,7 @@ function Students({ students, attendance, onAdd, onEdit, onDelete }) {
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
                   <span style={{fontWeight:700,color:'var(--text-strong)',fontSize:'var(--text-md)'}}>{s.name}</span>
+                  {sc && <Badge tone={sc.tone} size="sm">{className(sc)}</Badge>}
                   {streak>=3 && <Badge tone="coral" size="sm"><Icon n="alert-circle" size={11} style={{marginRight:2}} />Absent {streak}×</Badge>}
                 </div>
                 <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:2}}>
@@ -705,7 +821,8 @@ function Students({ students, attendance, onAdd, onEdit, onDelete }) {
         <div style={{height:8}} />
       </div>
 
-      <StudentForm open={showForm} student={editing}
+      <StudentForm open={showForm} student={editing} classes={classes}
+        defaultClassId={classFilter!=='all'?classFilter:(classes[0]&&classes[0].id)}
         onSave={data=>{ editId?onEdit({...data,id:editId}):onAdd(data); setShowForm(false); setEditId(null); }}
         onDelete={editId?()=>{onDelete(editId);setShowForm(false);setEditId(null);}:null}
         onClose={()=>{setShowForm(false);setEditId(null);}} />
@@ -713,15 +830,15 @@ function Students({ students, attendance, onAdd, onEdit, onDelete }) {
   );
 }
 
-function StudentForm({ open, student, onSave, onDelete, onClose }) {
-  const blank={name:'',age:'',parentName:'',parentPhone:'',notes:''};
+function StudentForm({ open, student, classes=[], defaultClassId, onSave, onDelete, onClose }) {
+  const blank={name:'',classId:defaultClassId||'',age:'',parentName:'',parentPhone:'',notes:''};
   const [f,setF]=useState(blank);
   const [err,setErr]=useState({});
   const [confirm,setConfirm]=useState(false);
 
   useEffect(()=>{
     if(open){
-      setF(student?{name:student.name,age:student.age||'',parentName:student.parentName||'',
+      setF(student?{name:student.name,classId:student.classId||defaultClassId||'',age:student.age||'',parentName:student.parentName||'',
         parentPhone:student.parentPhone||'',notes:student.notes||''}:blank);
       setErr({}); setConfirm(false);
     }
@@ -735,7 +852,7 @@ function StudentForm({ open, student, onSave, onDelete, onClose }) {
   };
   const go=()=>{
     const e=valid(); if(Object.keys(e).length){setErr(e);return;}
-    onSave({name:f.name.trim(),age:f.age?Number(f.age):'',parentName:f.parentName.trim(),parentPhone:f.parentPhone.trim(),notes:f.notes.trim()});
+    onSave({name:f.name.trim(),classId:f.classId,age:f.age?Number(f.age):'',parentName:f.parentName.trim(),parentPhone:f.parentPhone.trim(),notes:f.notes.trim()});
   };
 
   return (
@@ -753,7 +870,17 @@ function StudentForm({ open, student, onSave, onDelete, onClose }) {
       </>}>
       <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         <Input label="Full name" placeholder="e.g. ሃሌሉያ ዳዊት" value={f.name} onChange={set('name')} required error={err.name} />
-        <Input label="Age" type="number" placeholder="e.g. 12" value={f.age} onChange={set('age')} hint="Ages 10–14 for this class" />
+        {classes.length>0 && (
+          <div>
+            <label style={{display:'block',fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)',marginBottom:6}}>Class</label>
+            <select value={f.classId} onChange={set('classId')} style={{width:'100%',padding:'10px 14px',
+              borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',background:'var(--paper)',
+              fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',color:'var(--text-strong)',outline:'none'}}>
+              {classes.map(c=><option key={c.id} value={c.id}>{className(c)}</option>)}
+            </select>
+          </div>
+        )}
+        <Input label="Age" type="number" placeholder="e.g. 12" value={f.age} onChange={set('age')} />
         <Input label="Parent / guardian name" placeholder="e.g. ዳዊት ሃሌሉያ" value={f.parentName} onChange={set('parentName')} />
         <Input label="Parent phone" type="tel" placeholder="+251 91 234 5678" value={f.parentPhone} onChange={set('parentPhone')} hint="For absence alerts. Include country code (+251…)" />
         <Input label="Notes" placeholder="Any important notes…" value={f.notes} onChange={set('notes')} multi rows={3} />
@@ -763,30 +890,33 @@ function StudentForm({ open, student, onSave, onDelete, onClose }) {
 }
 
 /* ── ATTENDANCE ── */
-function Attendance({ students, attendance, onSave }) {
+function Attendance({ students, classes, attendance, activeClassId, setActiveClassId, onSave }) {
   const sundays=getSundays(14);
   const [selDate,setSelDate]=useState(dk(sundays[0]));
   const [marks,setMarks]=useState({});
   const [saved,setSaved]=useState(false);
   const [showPicker,setShowPicker]=useState(false);
 
+  const cls = classes.find(c=>c.id===activeClassId) || classes[0];
+  const classStudents = students.filter(s=>s.classId===(cls&&cls.id));
+
   useEffect(()=>{
     const ex=attendance[selDate]||{};
-    setMarks(Object.fromEntries(students.map(s=>[s.id,ex[s.id]??null])));
-    setSaved(!!Object.keys(attendance[selDate]||{}).length);
-  },[selDate,students.length]);
+    setMarks(Object.fromEntries(classStudents.map(s=>[s.id,ex[s.id]??null])));
+    setSaved(classStudents.length>0 && classStudents.every(s=>s.id in ex));
+  },[selDate,activeClassId,students.length]);
 
   const toggle=id=>{
     setSaved(false);
     setMarks(m=>({...m,[id]:m[id]===true?false:true}));
   };
-  const markAll=v=>{ setSaved(false); setMarks(Object.fromEntries(students.map(s=>[s.id,v]))); };
-  const present=Object.values(marks).filter(v=>v===true).length;
-  const absent=Object.values(marks).filter(v=>v===false).length;
+  const markAll=v=>{ setSaved(false); setMarks(Object.fromEntries(classStudents.map(s=>[s.id,v]))); };
+  const present=classStudents.filter(s=>marks[s.id]===true).length;
+  const absent=classStudents.filter(s=>marks[s.id]===false).length;
 
   const doSave=()=>{
-    // only save explicitly marked students
-    const toSave=Object.fromEntries(Object.entries(marks).filter(([,v])=>v!==null));
+    // save only this class's explicitly-marked students (merged with other classes in App)
+    const toSave=Object.fromEntries(classStudents.map(s=>[s.id,marks[s.id]]).filter(([,v])=>v!==null&&v!==undefined));
     onSave(selDate,toSave);
     setSaved(true);
   };
@@ -809,6 +939,26 @@ function Attendance({ students, attendance, onSave }) {
             {saved?'Saved':'Save'}
           </Btn>
         </div>
+
+        {/* Class selector */}
+        {classes.length>1 && (
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:'var(--space-4)'}}>
+            {classes.map(c=>{
+              const on=c.id===(cls&&cls.id);
+              return (
+                <button key={c.id} onClick={()=>setActiveClassId(c.id)} style={{
+                  display:'flex',alignItems:'center',gap:8,cursor:'pointer',padding:'8px 14px',
+                  borderRadius:'var(--radius-pill)',fontFamily:'var(--font-sans)',
+                  border:on?'1.5px solid var(--navy-800)':'1px solid var(--border-default)',
+                  background:on?'var(--navy-800)':'var(--surface-card)',
+                  color:on?'var(--cream-50)':'var(--text-muted)',fontWeight:on?700:500,fontSize:'var(--text-sm)'}}>
+                  <span style={{width:9,height:9,borderRadius:'50%',background:`var(--${c.tone}-500)`,flexShrink:0}} />
+                  {className(c)}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Date picker */}
         {showPicker && (
@@ -848,19 +998,19 @@ function Attendance({ students, attendance, onSave }) {
                 <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Absent</div>
               </div>
               <div style={{textAlign:'center'}}>
-                <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-subtle)',lineHeight:1}}>{students.length-present-absent}</div>
+                <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-subtle)',lineHeight:1}}>{classStudents.length-present-absent}</div>
                 <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Unmarked</div>
               </div>
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontSize:'var(--text-3xl)',fontWeight:800,color:'var(--navy-800)',lineHeight:1}}>
-                {students.length?Math.round(present/students.length*100):0}%
+                {classStudents.length?Math.round(present/classStudents.length*100):0}%
               </div>
               <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Attendance rate</div>
             </div>
           </div>
           <div style={{height:8,borderRadius:'var(--radius-pill)',background:'var(--surface-sunken)',overflow:'hidden'}}>
-            <div style={{width:(students.length?present/students.length*100:0)+'%',height:'100%',
+            <div style={{width:(classStudents.length?present/classStudents.length*100:0)+'%',height:'100%',
               background:'var(--leaf-500)',borderRadius:'var(--radius-pill)',transition:'width 300ms ease'}} />
           </div>
           <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}>
@@ -872,10 +1022,10 @@ function Attendance({ students, attendance, onSave }) {
 
       {/* Roster */}
       <div style={{padding:'0 var(--space-4)'}}>
-        {students.length===0 && <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}}>
-          Add students first to take attendance
+        {classStudents.length===0 && <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}}>
+          No students in this class yet. Add them from the Students tab.
         </div>}
-        {students.map(s=>{
+        {classStudents.map(s=>{
           const st=marks[s.id];
           const isPresent=st===true, isAbsent=st===false;
           return (
@@ -1037,11 +1187,102 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
   );
 }
 
+/* ── CLASSES ── */
+function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpenClass }) {
+  const [showForm,setShowForm]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const today=dk(getSundays(1)[0]);
+  const todayAtt=attendance[today]||{};
+  const editing=classes.find(c=>c.id===editId);
+  const countIn=cid=>students.filter(s=>s.classId===cid).length;
+  const presentIn=cid=>students.filter(s=>s.classId===cid&&todayAtt[s.id]===true).length;
+
+  return (
+    <div className="page" style={{maxWidth:760,margin:'0 auto'}}>
+      <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Classes</h1>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{classes.length} age-grouped {classes.length===1?'class':'classes'}</div>
+          </div>
+          <Btn variant="primary" size="sm" iL={<Icon n="plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>New class</Btn>
+        </div>
+      </div>
+      <div style={{padding:'0 var(--space-4)'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'var(--space-4)'}}>
+          {classes.map(c=>(
+            <ClassCard key={c.id} cls={c} count={countIn(c.id)} present={presentIn(c.id)}
+              onClick={()=>onOpenClass(c.id)} onEdit={()=>{setEditId(c.id);setShowForm(true);}} />
+          ))}
+        </div>
+        {classes.length===0 && (
+          <div style={{textAlign:'center',padding:'var(--space-7) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}}>
+            No classes yet — tap “New class”.
+          </div>
+        )}
+        <div style={{height:12}} />
+      </div>
+      <ClassForm open={showForm} klass={editing} studentCount={editId?countIn(editId):0}
+        onSave={data=>{ editId?onEdit({...data,id:editId}):onAdd(data); setShowForm(false); setEditId(null); }}
+        onDelete={editId&&classes.length>1?()=>{onDelete(editId);setShowForm(false);setEditId(null);}:null}
+        onClose={()=>{setShowForm(false);setEditId(null);}} />
+    </div>
+  );
+}
+
+function ClassForm({ open, klass, studentCount=0, onSave, onDelete, onClose }) {
+  const blank={name:'',ageRange:'',room:'',teacher:'',tone:'navy'};
+  const [f,setF]=useState(blank);
+  const [confirm,setConfirm]=useState(false);
+  useEffect(()=>{
+    if(open){ setF(klass?{name:klass.name||'',ageRange:klass.ageRange||'',room:klass.room||'',teacher:klass.teacher||'',tone:klass.tone||'navy'}:blank); setConfirm(false); }
+  },[open,klass]);
+  const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
+  const go=()=>onSave({name:f.name.trim(),ageRange:f.ageRange.trim(),room:f.room.trim(),teacher:f.teacher.trim(),tone:f.tone});
+
+  return (
+    <Modal open={open} onClose={onClose} title={klass?'Edit class':'New class'}
+      footer={<>
+        {onDelete&&!confirm&&<Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginRight:'auto'}} onClick={()=>setConfirm(true)}>
+          <Icon n="trash-2" size={15} style={{marginRight:4}} />Delete</Btn>}
+        {confirm&&<div style={{display:'flex',gap:8,marginRight:'auto',alignItems:'center'}}>
+          <span style={{fontSize:'var(--text-sm)',color:'var(--danger-500)',fontWeight:600}}>Delete class?</span>
+          <Btn variant="danger" size="sm" onClick={onDelete}>Delete</Btn>
+          <Btn variant="ghost" size="sm" onClick={()=>setConfirm(false)}>Cancel</Btn>
+        </div>}
+        <Btn variant="ghost" size="sm" onClick={onClose}>Cancel</Btn>
+        <Btn variant="primary" size="sm" onClick={go}>Save</Btn>
+      </>}>
+      <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        <Input label="Class name" placeholder="e.g. Pathfinders (leave blank to name later)" value={f.name} onChange={set('name')} hint="You can name it whenever you're ready." />
+        <Input label="Age range" placeholder="e.g. Ages 10–14" value={f.ageRange} onChange={set('ageRange')} />
+        <Input label="Room / location" placeholder="e.g. Upper hall" value={f.room} onChange={set('room')} />
+        <Input label="Teacher" placeholder="Teacher's name" value={f.teacher} onChange={set('teacher')} />
+        <div>
+          <label style={{display:'block',fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)',marginBottom:8}}>Colour</label>
+          <div style={{display:'flex',gap:10}}>
+            {CLASS_TONES.map(t=>(
+              <button key={t} onClick={()=>setF(p=>({...p,tone:t}))} aria-label={t} style={{width:34,height:34,borderRadius:'50%',
+                background:`var(--${t}-500)`,border:f.tone===t?'3px solid var(--navy-800)':'3px solid transparent',
+                cursor:'pointer',outline:'1px solid var(--border-soft)'}} />
+            ))}
+          </div>
+        </div>
+        {klass && <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',background:'var(--surface-sunken)',
+          borderRadius:'var(--radius-md)',padding:'10px 12px'}}>
+          {studentCount} student{studentCount!==1?'s':''} in this class. Move students between classes from the Students tab.
+        </div>}
+      </div>
+    </Modal>
+  );
+}
+
 /* ── NAV ── */
 const TABS=[
   {id:'dashboard',i:'layout-dashboard',l:'Dashboard'},
-  {id:'students',i:'users',l:'Students'},
+  {id:'classes',i:'door-open',l:'Classes'},
   {id:'attendance',i:'check-circle-2',l:'Attendance'},
+  {id:'students',i:'users',l:'Students'},
   {id:'sessions',i:'book-open',l:'Sessions'},
 ];
 
@@ -1086,24 +1327,42 @@ function App() {
   const [students,setStudents]=useState(()=>load(SK.children,null)??INITIAL_STUDENTS);
   const [attendance,setAttendance]=useState(()=>load(SK.attendance,{}));
   const [sessions,setSessions]=useState(()=>load(SK.sessions,[]));
+  const [classes,setClasses]=useState(()=>load(SK.classes,null)??INITIAL_CLASSES);
+  const [activeClassId,setActiveClassId]=useState(()=>{
+    const cs=load(SK.classes,null)??INITIAL_CLASSES; return cs[0]?cs[0].id:null;
+  });
 
   const saveS=v=>{setStudents(v);save(SK.children,v);};
   const saveSess=v=>{setSessions(v);save(SK.sessions,v);};
+  const saveCls=v=>{setClasses(v);save(SK.classes,v);};
 
   const resetAll=()=>{
-    [SK.children,SK.attendance,SK.sessions].forEach(k=>{ try{localStorage.removeItem(k);}catch{} });
-    setStudents(INITIAL_STUDENTS); setAttendance({}); setSessions([]); setTab('dashboard');
+    [SK.children,SK.attendance,SK.sessions,SK.classes].forEach(k=>{ try{localStorage.removeItem(k);}catch{} });
+    setStudents(INITIAL_STUDENTS); setAttendance({}); setSessions([]); setClasses(INITIAL_CLASSES);
+    setActiveClassId(INITIAL_CLASSES[0].id); setTab('dashboard');
   };
 
+  const openClass=(cid)=>{ setActiveClassId(cid); setTab('attendance'); };
+
   const screens={
-    dashboard:<Dashboard students={students} attendance={attendance} sessions={sessions} onNav={setTab} onReset={resetAll} />,
-    students:<Students students={students} attendance={attendance}
+    dashboard:<Dashboard students={students} attendance={attendance} sessions={sessions} classes={classes}
+      onNav={setTab} onReset={resetAll} onOpenClass={openClass} />,
+    classes:<Classes classes={classes} students={students} attendance={attendance}
+      onAdd={d=>saveCls([...classes,{...d,id:uid()}])}
+      onEdit={d=>saveCls(classes.map(c=>c.id===d.id?d:c))}
+      onDelete={id=>{ saveCls(classes.filter(c=>c.id!==id));
+        // reassign orphaned students to the first remaining class
+        const rest=classes.filter(c=>c.id!==id); const fallback=rest[0]&&rest[0].id;
+        if(fallback) saveS(students.map(s=>s.classId===id?{...s,classId:fallback}:s)); }}
+      onOpenClass={openClass} />,
+    students:<Students students={students} classes={classes} attendance={attendance}
       onAdd={d=>saveS([...students,{...d,id:uid(),addedAt:dk(new Date())}])}
       onEdit={d=>saveS(students.map(s=>s.id===d.id?d:s))}
       onDelete={id=>saveS(students.filter(s=>s.id!==id))} />,
-    attendance:<Attendance students={students} attendance={attendance} onSave={(ds,marks)=>{
-      const n={...attendance,[ds]:marks};setAttendance(n);save(SK.attendance,n);
-    }} />,
+    attendance:<Attendance students={students} classes={classes} attendance={attendance}
+      activeClassId={activeClassId} setActiveClassId={setActiveClassId} onSave={(ds,marks)=>{
+        const n={...attendance,[ds]:{...(attendance[ds]||{}),...marks}};setAttendance(n);save(SK.attendance,n);
+      }} />,
     sessions:<Sessions sessions={sessions}
       onAdd={d=>saveSess([...sessions,{...d,id:uid()}])}
       onEdit={d=>saveSess(sessions.map(s=>s.id===d.id?d:s))}
