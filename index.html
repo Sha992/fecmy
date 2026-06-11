@@ -74,6 +74,14 @@ input,textarea,select,button{font-family:var(--font-sans)}
   padding:var(--space-5);gap:var(--space-4);position:sticky;top:0;height:100vh;overflow:hidden}
 @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes toastIn{from{transform:translate(-50%,16px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+@keyframes confettiFall{0%{opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:.9}}
+@keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes navDot{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.screen-enter{animation:fadeUp 240ms cubic-bezier(0.22,1,0.36,1)}
+.stagger{animation:fadeUp 320ms cubic-bezier(0.22,1,0.36,1) both}
 </style>
 </head>
 <body>
@@ -142,6 +150,64 @@ function attendanceRate(id, att, weeks=8) {
   const marked=keys.filter(k=>id in att[k]);
   if(!marked.length) return null;
   return Math.round(marked.filter(k=>att[k][id]===true).length/marked.length*100);
+}
+
+// Per-student history over the last n Sundays: 'p' present, 'a' absent, 'u' unmarked.
+function studentHistory(id, att, n=10) {
+  return getSundays(n).map(d=>{
+    const k=dk(d); const r=att[k]||{};
+    return { date:k, mark: r[id]===true?'p':r[id]===false?'a':'u' };
+  }).reverse();
+}
+
+function fireConfetti() {
+  const colors=['#EF6F5E','#4C9A6B','#4DA3C4','#8E6FB0','#03273F','#F5C04E'];
+  const root=document.createElement('div');
+  root.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden';
+  for(let i=0;i<70;i++){
+    const el=document.createElement('div');
+    const sz=6+Math.random()*8;
+    el.style.cssText=`position:absolute;top:-20px;left:${Math.random()*100}%;width:${sz}px;height:${sz*0.6}px;`+
+      `background:${colors[i%colors.length]};opacity:0;border-radius:2px;transform:rotate(${Math.random()*360}deg);`+
+      `animation:confettiFall ${1.5+Math.random()*1.3}s ${Math.random()*0.5}s cubic-bezier(0.25,0.46,0.45,0.94) forwards`;
+    root.appendChild(el);
+  }
+  document.body.appendChild(root);
+  setTimeout(()=>root.remove(),3500);
+}
+
+// Responsive helper — true when the media query matches.
+function useMedia(q) {
+  const [m,setM]=useState(()=>window.matchMedia(q).matches);
+  useEffect(()=>{
+    const mm=window.matchMedia(q);
+    const f=e=>setM(e.matches);
+    mm.addEventListener('change',f);
+    return()=>mm.removeEventListener('change',f);
+  },[q]);
+  return m;
+}
+
+// Animates a number from its previous value (0 on first mount).
+function useCountUp(target, dur=650) {
+  const [v,setV]=useState(typeof target==='number'?0:target);
+  const prev=useRef(0);
+  useEffect(()=>{
+    if(typeof target!=='number'){ setV(target); return; }
+    const from=typeof prev.current==='number'?prev.current:0;
+    prev.current=target;
+    if(from===target){ setV(target); return; }
+    let start=null, raf;
+    const step=ts=>{
+      if(start===null) start=ts;
+      const p=Math.min(1,(ts-start)/dur), e=1-Math.pow(1-p,3);
+      setV(Math.round(from+(target-from)*e));
+      if(p<1) raf=requestAnimationFrame(step);
+    };
+    raf=requestAnimationFrame(step);
+    return()=>cancelAnimationFrame(raf);
+  },[target]);
+  return v;
 }
 
 /* ── ICONS (Feather/Lucide paths) ── */
@@ -261,6 +327,11 @@ function Av({ name='', size='md', style={} }) {
 }
 
 function StatTile({ icon, value, label, trend=null, tone='navy' }) {
+  // Count up numeric values (including "86%" style strings)
+  const num = typeof value==='number' ? value
+    : (typeof value==='string' && /^\d+%$/.test(value)) ? parseInt(value,10) : null;
+  const counted = useCountUp(num===null?0:num);
+  const display = num===null ? value : (typeof value==='string' ? counted+'%' : counted);
   return (
     <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
       borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
@@ -282,7 +353,7 @@ function StatTile({ icon, value, label, trend=null, tone='navy' }) {
       </div>
       <div>
         <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-strong)',
-          letterSpacing:'-.02em',lineHeight:1,fontVariantNumeric:'tabular-nums'}}>{value}</div>
+          letterSpacing:'-.02em',lineHeight:1,fontVariantNumeric:'tabular-nums'}}>{display}</div>
         <div style={{fontSize:11,color:'var(--text-muted)',marginTop:5,fontWeight:500}}>{label}</div>
       </div>
     </div>
@@ -411,8 +482,229 @@ function Modal({ open, onClose, title, children, footer }) {
   );
 }
 
+function Toast({ toast }) {
+  if(!toast) return null;
+  return (
+    <div key={toast.key} style={{position:'fixed',left:'50%',bottom:'calc(84px + env(safe-area-inset-bottom))',
+      zIndex:300,transform:'translateX(-50%)',animation:'toastIn 240ms cubic-bezier(0.22,1,0.36,1)',
+      background:'var(--navy-800)',color:'var(--cream-50)',borderRadius:'var(--radius-pill)',
+      padding:'11px 20px',display:'flex',alignItems:'center',gap:9,boxShadow:'var(--shadow-lg)',
+      fontSize:'var(--text-sm)',fontWeight:600,whiteSpace:'nowrap',maxWidth:'90vw'}}>
+      <span style={{width:22,height:22,borderRadius:'50%',background:'var(--leaf-500)',flexShrink:0,
+        display:'inline-flex',alignItems:'center',justifyContent:'center',animation:'popIn 320ms ease'}}>
+        <Icon n={toast.icon||'check'} size={13} color="#fff" />
+      </span>
+      <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{toast.msg}</span>
+    </div>
+  );
+}
+
+/* ── DASHBOARD SECTIONS (shared by phone & desktop layouts) ── */
+function SectionLabel({ children, action }) {
+  return (
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+      <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',textTransform:'uppercase'}}>{children}</div>
+      {action}
+    </div>
+  );
+}
+
+function ChecklistCard({ steps, onNav }) {
+  return (
+    <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+      borderRadius:'var(--radius-lg)',boxShadow:'var(--shadow-xs)',overflow:'hidden'}}>
+      <div style={{padding:'var(--space-4) var(--space-4) 0'}}>
+        <div style={{fontSize:'var(--text-md)',fontWeight:800,color:'var(--text-strong)'}}>Get set up</div>
+        <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:2}}>
+          {steps.filter(s=>s.done).length} of {steps.length} done
+        </div>
+      </div>
+      <div style={{marginTop:'var(--space-3)'}}>
+        {steps.map(st=>(
+          <button key={st.label} onClick={()=>!st.done&&onNav(st.go)} disabled={st.done}
+            style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 16px',
+              border:'none',borderTop:'1px solid var(--border-soft)',
+              background:st.done?'var(--surface-sunken)':'transparent',
+              cursor:st.done?'default':'pointer',textAlign:'left',fontFamily:'var(--font-sans)'}}>
+            <span style={{width:30,height:30,borderRadius:'50%',flexShrink:0,display:'flex',
+              alignItems:'center',justifyContent:'center',
+              background:st.done?'var(--leaf-500)':'var(--navy-50)',
+              color:st.done?'#fff':'var(--navy-600)'}}>
+              <Icon n={st.done?'check':st.icon} size={15} />
+            </span>
+            <span style={{flex:1,minWidth:0}}>
+              <span style={{display:'block',fontWeight:600,fontSize:'var(--text-sm)',
+                color:st.done?'var(--text-muted)':'var(--text-strong)',
+                textDecoration:st.done?'line-through':'none'}}>{st.label}</span>
+              {!st.done&&<span style={{display:'block',fontSize:11,color:'var(--text-muted)',marginTop:1}}>{st.sub}</span>}
+            </span>
+            {!st.done&&<Icon n="chevron-right" size={16} color="var(--text-subtle)" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ClassesOverview({ classes, students, todayAtt, onOpenClass, onNav, columns }) {
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-3)'}}>
+        <div style={{fontSize:'var(--text-lg)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.01em'}}>Today’s classes</div>
+        <button onClick={()=>onNav('classes')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',
+          alignItems:'center',gap:3,fontSize:'var(--text-xs)',color:'var(--navy-600)',fontWeight:600,fontFamily:'var(--font-sans)'}}>
+          Manage <Icon n="chevron-right" size={14} />
+        </button>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:columns||'repeat(auto-fill,minmax(240px,1fr))',gap:'var(--space-3)'}}>
+        {classes.map(c=>{
+          const count=students.filter(s=>s.classId===c.id).length;
+          const pres=students.filter(s=>s.classId===c.id&&todayAtt[s.id]===true).length;
+          return <ClassCard key={c.id} cls={c} count={count} present={pres} onClick={()=>onOpenClass&&onOpenClass(c.id)} />;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AlertsCard({ alerts, attendance, onNav }) {
+  return (
+    <div style={{background:'var(--coral-100)',borderRadius:'var(--radius-lg)',
+      padding:'var(--space-4)',border:'1px solid rgba(239,111,94,.2)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,color:'#B23A2C'}}>
+        <Icon n="alert-circle" size={17} />
+        <span style={{fontWeight:700,fontSize:'var(--text-sm)'}}>
+          {alerts.length} student{alerts.length>1?'s':''} absent 3+ consecutive Sundays
+        </span>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {alerts.map(s=>(
+          <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper)',
+            borderRadius:'var(--radius-md)',padding:'10px 12px'}}>
+            <Av name={s.name} size="sm" />
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:'var(--text-sm)',color:'var(--text-strong)',
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>{absenceStreak(s.id,attendance)} Sundays missed</div>
+            </div>
+            {s.parentPhone ? (
+              <a href={`tel:${s.parentPhone}`} style={{textDecoration:'none',display:'flex',alignItems:'center',
+                justifyContent:'center',width:34,height:34,borderRadius:'50%',background:'var(--coral-500)',color:'#fff'}}>
+                <Icon n="phone" size={15} />
+              </a>
+            ) : (
+              <button onClick={()=>onNav('students')} style={{fontSize:11,fontWeight:600,color:'#B23A2C',
+                background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-sans)'}}>Add phone</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NextSessionCard({ upcoming }) {
+  return (
+    <div>
+      <SectionLabel>Next session</SectionLabel>
+      <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+        borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
+        display:'flex',gap:12,alignItems:'flex-start'}}>
+        <div style={{width:44,height:44,borderRadius:'var(--radius-md)',background:'var(--navy-50)',
+          display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'var(--navy-700)'}}>
+          <Icon n="book-open" size={20} />
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,color:'var(--text-strong)'}}>{upcoming.title}</div>
+          {upcoming.scripture && <div style={{fontSize:'var(--text-sm)',color:'var(--navy-600)',fontWeight:600,marginTop:2}}>{upcoming.scripture}</div>}
+          <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:4}}>{fmtShort(upcoming.date)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrendCard({ recordedKeys, rateOf, height=110, fill }) {
+  return (
+    <div style={fill?{display:'flex',flexDirection:'column',height:'100%'}:undefined}>
+      <SectionLabel>Attendance trend</SectionLabel>
+      <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+        borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
+        flex:fill?1:'none',display:'flex',alignItems:'flex-end'}}>
+        <div style={{display:'flex',alignItems:'flex-end',gap:8,height,width:'100%'}}>
+          {recordedKeys.slice(0,8).reverse().map((k,i,arr)=>{
+            const r=rateOf(k);
+            const isLast=i===arr.length-1;
+            return (
+              <div key={k} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:5,height:'100%',justifyContent:'flex-end'}}>
+                <span style={{fontSize:10,fontWeight:800,color:isLast?'var(--navy-800)':'var(--text-muted)'}}>{r}%</span>
+                <div style={{width:'100%',maxWidth:34,height:`${Math.max(r,3)/100*(height-34)}px`,
+                  background:isLast?'var(--navy-800)':r>=80?'var(--leaf-500)':r>=60?'var(--sky-500)':'var(--coral-500)',
+                  borderRadius:'6px 6px 2px 2px',transformOrigin:'bottom',
+                  animation:`barGrow 500ms ${i*70}ms cubic-bezier(0.22,1,0.36,1) both`,
+                  opacity:isLast?1:.85}} />
+                <span style={{fontSize:9,color:'var(--text-subtle)',fontWeight:600,whiteSpace:'nowrap'}}>{fmtShort(k)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecentCard({ recentKeys, attendance, onNav }) {
+  return (
+    <div>
+      <SectionLabel action={
+        <button onClick={()=>onNav('attendance')} style={{background:'none',border:'none',cursor:'pointer',
+          fontSize:'var(--text-xs)',color:'var(--navy-600)',fontWeight:600,fontFamily:'var(--font-sans)'}}>View all →</button>
+      }>Recent attendance</SectionLabel>
+      <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+        borderRadius:'var(--radius-lg)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
+        {recentKeys.map((ds,i)=>{
+          const r=attendance[ds];
+          const p=Object.values(r).filter(Boolean).length;
+          const t=Object.keys(r).length;
+          const pct=t?Math.round(p/t*100):0;
+          return <div key={ds} style={{display:'flex',alignItems:'center',gap:12,
+            padding:'12px 16px',borderBottom:i<recentKeys.length-1?'1px solid var(--border-soft)':'none'}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)'}}>{fmtShort(ds)}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>{p}/{t} present</div>
+            </div>
+            <div style={{width:72,height:5,borderRadius:3,background:'var(--surface-sunken)',overflow:'hidden'}}>
+              <div style={{width:pct+'%',height:'100%',background:pct>=80?'var(--leaf-500)':pct>=60?'var(--sky-500)':'var(--coral-500)',borderRadius:3,transition:'width 300ms ease'}} />
+            </div>
+            <div style={{fontSize:'var(--text-xs)',fontWeight:700,color:'var(--text-strong)',width:28,textAlign:'right'}}>{pct}%</div>
+          </div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SearchBox({ onSubmit, width=250 }) {
+  const [v,setV]=useState('');
+  return (
+    <div style={{position:'relative'}}>
+      <span style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',display:'flex',color:'var(--text-muted)'}}>
+        <Icon n="search" size={16} />
+      </span>
+      <input type="search" value={v} placeholder="Search students…"
+        onChange={e=>setV(e.target.value)}
+        onKeyDown={e=>{ if(e.key==='Enter'&&v.trim()){ onSubmit(v.trim()); setV(''); } }}
+        style={{width,padding:'10px 14px 10px 38px',borderRadius:'var(--radius-pill)',
+          border:'1.5px solid var(--border-default)',background:'var(--paper)',
+          fontFamily:'var(--font-sans)',fontSize:'var(--text-sm)',color:'var(--text-strong)',outline:'none'}}
+        onFocus={e=>e.target.style.borderColor='var(--navy-600)'}
+        onBlur={e=>e.target.style.borderColor='var(--border-default)'} />
+    </div>
+  );
+}
+
 /* ── DASHBOARD ── */
-function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset, onOpenClass }) {
+function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset, onOpenClass, onSearch }) {
   const [showSettings, setShowSettings] = useState(false);
   const realToday = dk(new Date());           // the actual calendar date
   const today = dk(getSundays(1)[0]);          // the class day (this/most-recent Sunday)
@@ -453,6 +745,98 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
   ];
   const showChecklist = students.length>0 && steps.some(s=>!s.done);
 
+  const isDesk = useMedia('(min-width:1024px)');
+  const hour = new Date().getHours();
+  const greeting = 'Good ' + (hour<12?'morning':hour<18?'afternoon':'evening');
+  const subtitle = marked>0
+    ? `${present} checked in ${isSunday?'today':'on '+fmtShort(today)}`
+    : (isSunday?'No attendance yet today':`Sunday ${fmtShort(today)} not recorded yet`);
+
+  /* ── Desktop dashboard ── */
+  if(isDesk) return (
+    <div className="page" style={{maxWidth:1320,margin:'0 auto',padding:'28px 36px 44px',
+      display:'flex',flexDirection:'column',gap:'var(--space-5)'}}>
+
+      {/* Header row */}
+      <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+        <div>
+          <h1 style={{fontSize:'var(--text-3xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em',lineHeight:1.1}}>{greeting}</h1>
+          <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:5}}>{fmtFull(realToday)} · {students.length} students · {subtitle}</div>
+        </div>
+        <div style={{marginLeft:'auto',display:'flex',gap:10,alignItems:'center'}}>
+          <SearchBox onSubmit={q=>onSearch&&onSearch(q)} />
+          <Btn variant="primary" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>Take attendance</Btn>
+          <button onClick={()=>setShowSettings(true)} aria-label="Settings" style={{width:40,height:40,borderRadius:'50%',
+            border:'1px solid var(--border-default)',background:'var(--paper)',color:'var(--text-muted)',
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Icon n="settings" size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Stats — 4 across */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'var(--space-4)'}}>
+        <StatTile icon="users" value={students.length} label="Students enrolled" tone="navy" />
+        <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':`Present ${fmtShort(today)}`} tone="leaf" trend={presentTrend} />
+        <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?(isSunday?'Attendance today':'Attendance '+fmtShort(today)):'Last attendance'} tone="sky" trend={rateTrend} />
+        <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'} />
+      </div>
+
+      {/* Featured row: Sunday CTA card + trend chart */}
+      <div style={{display:'grid',gridTemplateColumns:recordedKeys.length>=2?'1.05fr 1fr':'1fr',gap:'var(--space-4)',alignItems:'stretch'}}>
+        <div style={{background:'var(--navy-800)',borderRadius:'var(--radius-xl)',padding:'var(--space-6)',
+          color:'var(--cream-50)',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'center',minHeight:200,
+          backgroundImage:'radial-gradient(110% 140% at 100% 0%,rgba(143,178,198,.22),transparent 55%)'}}>
+          <Logo color="var(--cream-50)" size={230} style={{position:'absolute',right:-40,bottom:-50,opacity:.07,pointerEvents:'none'}} />
+          <div style={{position:'relative'}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--navy-100)'}}>
+              {isSunday?'This Sunday':'Class day · Sunday'}
+            </div>
+            <div style={{fontSize:'var(--text-2xl)',fontWeight:800,letterSpacing:'-.02em',marginTop:8,lineHeight:1.15}}>
+              {fmtFull(today)}
+            </div>
+            <p style={{fontSize:'var(--text-sm)',color:'var(--navy-100)',marginTop:8,maxWidth:'46ch',lineHeight:1.55}}>
+              {marked>0?`${present} of ${students.length} children checked in. Keep it up!`:'Attendance has not been recorded for this Sunday yet — it takes about a minute.'}
+            </p>
+            <div style={{display:'flex',gap:10,marginTop:18}}>
+              <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>
+                {marked>0?'Review attendance':'Take attendance'}
+              </Btn>
+              <Btn variant="ghost" size="sm" onClick={()=>onNav('sessions')}
+                style={{color:'var(--cream-50)',borderColor:'rgba(251,247,240,.3)'}}>Plan a lesson</Btn>
+            </div>
+          </div>
+        </div>
+        {recordedKeys.length>=2 && <TrendCard recordedKeys={recordedKeys} rateOf={rateOf} height={150} fill />}
+      </div>
+
+      {/* Main: classes + right rail */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 350px',gap:'var(--space-4)',alignItems:'start'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+          {classes.length>0 && students.length>0 &&
+            <ClassesOverview classes={classes} students={students} todayAtt={todayAtt}
+              onOpenClass={onOpenClass} onNav={onNav} columns="repeat(2,1fr)" />}
+          {students.length===0 && (
+            <div style={{textAlign:'center',padding:'var(--space-7) var(--space-5)'}}>
+              <div style={{fontWeight:700,fontSize:'var(--text-lg)',color:'var(--text-strong)'}}>Add your first student</div>
+              <Btn variant="primary" onClick={()=>onNav('students')} style={{marginTop:16}} iL={<Icon n="user-plus" size={16} />}>Add students</Btn>
+            </div>
+          )}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+          {showChecklist && <ChecklistCard steps={steps} onNav={onNav} />}
+          {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
+          {upcoming && <NextSessionCard upcoming={upcoming} />}
+          {recentKeys.length>0 && <RecentCard recentKeys={recentKeys} attendance={attendance} onNav={onNav} />}
+        </div>
+      </div>
+
+      <SettingsSheet open={showSettings} onClose={()=>setShowSettings(false)} onReset={onReset}
+        students={students} attendance={attendance} sessions={sessions} />
+    </div>
+  );
+
+  /* ── Phone dashboard ── */
   return (
     <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
       {/* Hero banner */}
@@ -497,161 +881,32 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         </div>
       </div>
 
-      <div style={{padding:'var(--space-4) var(--space-4) 0'}}>
-        {/* Stats — StatTile from the design system, 2×2 grid */}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-3)',marginTop:'var(--space-4)'}}>
+      <div style={{padding:'var(--space-4) var(--space-4) 0',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        {/* Stats — 2×2 grid */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-3)'}}>
           <StatTile icon="users" value={students.length} label="Students enrolled" tone="navy" />
           <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':`Present ${fmtShort(today)}`} tone="leaf" trend={presentTrend} />
           <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?(isSunday?'Attendance today':'Attendance '+fmtShort(today)):'Last attendance'} tone="sky" trend={rateTrend} />
           <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'} />
         </div>
 
-        {/* Getting-started checklist — fades away as steps are done */}
-        {showChecklist && (
-          <div style={{marginTop:'var(--space-4)',background:'var(--surface-card)',border:'1px solid var(--border-soft)',
-            borderRadius:'var(--radius-lg)',boxShadow:'var(--shadow-xs)',overflow:'hidden'}}>
-            <div style={{padding:'var(--space-4) var(--space-4) 0'}}>
-              <div style={{fontSize:'var(--text-md)',fontWeight:800,color:'var(--text-strong)'}}>Get set up</div>
-              <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:2}}>
-                {steps.filter(s=>s.done).length} of {steps.length} done
-              </div>
-            </div>
-            <div style={{marginTop:'var(--space-3)'}}>
-              {steps.map((st,i)=>(
-                <button key={st.label} onClick={()=>!st.done&&onNav(st.go)} disabled={st.done}
-                  style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 16px',
-                    border:'none',borderTop:'1px solid var(--border-soft)',
-                    background:st.done?'var(--surface-sunken)':'transparent',
-                    cursor:st.done?'default':'pointer',textAlign:'left',fontFamily:'var(--font-sans)'}}>
-                  <span style={{width:30,height:30,borderRadius:'50%',flexShrink:0,display:'flex',
-                    alignItems:'center',justifyContent:'center',
-                    background:st.done?'var(--leaf-500)':'var(--navy-50)',
-                    color:st.done?'#fff':'var(--navy-600)'}}>
-                    <Icon n={st.done?'check':st.icon} size={15} />
-                  </span>
-                  <span style={{flex:1,minWidth:0}}>
-                    <span style={{display:'block',fontWeight:600,fontSize:'var(--text-sm)',
-                      color:st.done?'var(--text-muted)':'var(--text-strong)',
-                      textDecoration:st.done?'line-through':'none'}}>{st.label}</span>
-                    {!st.done&&<span style={{display:'block',fontSize:11,color:'var(--text-muted)',marginTop:1}}>{st.sub}</span>}
-                  </span>
-                  {!st.done&&<Icon n="chevron-down" size={16} color="var(--text-subtle)" style={{transform:'rotate(-90deg)'}} />}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {showChecklist && <ChecklistCard steps={steps} onNav={onNav} />}
 
-        {/* Today's classes */}
-        {classes.length>0 && students.length>0 && (
-          <div style={{marginTop:'var(--space-5)'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'var(--space-3)'}}>
-              <div style={{fontSize:'var(--text-lg)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.01em'}}>Today’s classes</div>
-              <button onClick={()=>onNav('classes')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',
-                alignItems:'center',gap:3,fontSize:'var(--text-xs)',color:'var(--navy-600)',fontWeight:600,fontFamily:'var(--font-sans)'}}>
-                Manage <Icon n="chevron-right" size={14} />
-              </button>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:'var(--space-3)'}}>
-              {classes.map(c=>{
-                const count=students.filter(s=>s.classId===c.id).length;
-                const pres=students.filter(s=>s.classId===c.id&&todayAtt[s.id]===true).length;
-                return <ClassCard key={c.id} cls={c} count={count} present={pres} onClick={()=>onOpenClass&&onOpenClass(c.id)} />;
-              })}
-            </div>
-          </div>
-        )}
+        {classes.length>0 && students.length>0 &&
+          <ClassesOverview classes={classes} students={students} todayAtt={todayAtt}
+            onOpenClass={onOpenClass} onNav={onNav} />}
 
-        {/* Absence alerts */}
-        {alerts.length>0 && (
-          <div style={{marginTop:'var(--space-4)',background:'var(--coral-100)',borderRadius:'var(--radius-lg)',
-            padding:'var(--space-4)',border:'1px solid rgba(239,111,94,.2)'}}>
-            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,color:'#B23A2C'}}>
-              <Icon n="alert-circle" size={17} />
-              <span style={{fontWeight:700,fontSize:'var(--text-sm)'}}>
-                {alerts.length} student{alerts.length>1?'s':''} absent 3+ consecutive Sundays
-              </span>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              {alerts.map(s=>(
-                <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper)',
-                  borderRadius:'var(--radius-md)',padding:'10px 12px'}}>
-                  <Av name={s.name} size="sm" />
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,fontSize:'var(--text-sm)',color:'var(--text-strong)',
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
-                    <div style={{fontSize:11,color:'var(--text-muted)'}}>{absenceStreak(s.id,attendance)} Sundays missed</div>
-                  </div>
-                  {s.parentPhone ? (
-                    <a href={`tel:${s.parentPhone}`} style={{textDecoration:'none',display:'flex',alignItems:'center',
-                      justifyContent:'center',width:34,height:34,borderRadius:'50%',background:'var(--coral-500)',color:'#fff'}}>
-                      <Icon n="phone" size={15} />
-                    </a>
-                  ) : (
-                    <button onClick={()=>onNav('students')} style={{fontSize:11,fontWeight:600,color:'#B23A2C',
-                      background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-sans)'}}>Add phone</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
 
-        {/* Upcoming session */}
-        {upcoming && (
-          <div style={{marginTop:'var(--space-4)'}}>
-            <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:8,
-              letterSpacing:'.05em',textTransform:'uppercase'}}>Next session</div>
-            <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
-              borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
-              display:'flex',gap:12,alignItems:'flex-start'}}>
-              <div style={{width:44,height:44,borderRadius:'var(--radius-md)',background:'var(--navy-50)',
-                display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'var(--navy-700)'}}>
-                <Icon n="book-open" size={20} />
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:700,color:'var(--text-strong)'}}>{upcoming.title}</div>
-                {upcoming.scripture && <div style={{fontSize:'var(--text-sm)',color:'var(--navy-600)',fontWeight:600,marginTop:2}}>{upcoming.scripture}</div>}
-                <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:4}}>{fmtShort(upcoming.date)}</div>
-              </div>
-            </div>
-          </div>
-        )}
+        {upcoming && <NextSessionCard upcoming={upcoming} />}
 
-        {/* Recent attendance */}
-        {recentKeys.length>0 && (
-          <div style={{marginTop:'var(--space-4)'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-              <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',textTransform:'uppercase'}}>Recent attendance</div>
-              <button onClick={()=>onNav('attendance')} style={{background:'none',border:'none',cursor:'pointer',
-                fontSize:'var(--text-xs)',color:'var(--navy-600)',fontWeight:600,fontFamily:'var(--font-sans)'}}>View all →</button>
-            </div>
-            <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
-              borderRadius:'var(--radius-lg)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
-              {recentKeys.map((ds,i)=>{
-                const r=attendance[ds];
-                const p=Object.values(r).filter(Boolean).length;
-                const t=Object.keys(r).length;
-                const pct=t?Math.round(p/t*100):0;
-                return <div key={ds} style={{display:'flex',alignItems:'center',gap:12,
-                  padding:'12px 16px',borderBottom:i<recentKeys.length-1?'1px solid var(--border-soft)':'none'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)'}}>{fmtShort(ds)}</div>
-                    <div style={{fontSize:11,color:'var(--text-muted)'}}>{p}/{t} present</div>
-                  </div>
-                  <div style={{width:72,height:5,borderRadius:3,background:'var(--surface-sunken)',overflow:'hidden'}}>
-                    <div style={{width:pct+'%',height:'100%',background:pct>=80?'var(--leaf-500)':pct>=60?'var(--sky-500)':'var(--coral-500)',borderRadius:3,transition:'width 300ms ease'}} />
-                  </div>
-                  <div style={{fontSize:'var(--text-xs)',fontWeight:700,color:'var(--text-strong)',width:28,textAlign:'right'}}>{pct}%</div>
-                </div>;
-              })}
-            </div>
-          </div>
-        )}
+        {recordedKeys.length>=2 && <TrendCard recordedKeys={recordedKeys} rateOf={rateOf} />}
+
+        {recentKeys.length>0 && <RecentCard recentKeys={recentKeys} attendance={attendance} onNav={onNav} />}
 
         {/* Empty state */}
         {students.length===0 && (
-          <div style={{marginTop:'var(--space-5)',textAlign:'center',padding:'var(--space-7) var(--space-5)'}}>
+          <div style={{textAlign:'center',padding:'var(--space-7) var(--space-5)'}}>
             <div style={{width:60,height:60,borderRadius:'var(--radius-xl)',background:'var(--navy-50)',display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:14}}>
               <Icon n="users" size={26} color="var(--navy-600)" />
             </div>
@@ -728,20 +983,25 @@ function SettingsSheet({ open, onClose, onReset, students, attendance, sessions 
 }
 
 /* ── STUDENTS ── */
-function Students({ students, classes, attendance, onAdd, onEdit, onDelete }) {
+function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed }) {
   const [q,setQ]=useState('');
   const [classFilter,setClassFilter]=useState('all');
   const [editId,setEditId]=useState(null);
   const [showForm,setShowForm]=useState(false);
+  const [viewId,setViewId]=useState(null);
+  const isDesk=useMedia('(min-width:1024px)');
+  // Global search (desktop header) seeds the query when it changes
+  useEffect(()=>{ if(seed&&seed.q!==undefined) setQ(seed.q); },[seed&&seed.n]);
   const clsOf=id=>classes.find(c=>c.id===id);
   const filtered=students.filter(s=>
     (classFilter==='all'||s.classId===classFilter) &&
     (s.name.toLowerCase().includes(q.toLowerCase())||(s.parentName||'').toLowerCase().includes(q.toLowerCase())))
     .sort(byName);
   const editing=students.find(s=>s.id===editId);
+  const viewing=students.find(s=>s.id===viewId);
 
   return (
-    <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
+    <div className="page" style={{maxWidth:isDesk?1240:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
           <div>
@@ -789,14 +1049,99 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete }) {
             {q||classFilter!=='all'?'No students match':'No students yet — tap Add to get started'}
           </div>
         )}
-        {filtered.map(s=>{
+
+        {/* Desktop: data table */}
+        {isDesk && filtered.length>0 && (
+          <div className="stagger" style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+            borderRadius:'var(--radius-lg)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'var(--font-sans)'}}>
+              <thead>
+                <tr style={{background:'var(--surface-sunken)'}}>
+                  {['Student','Class','Age','Parent','Attendance','Last 5 Sundays',''].map(h=>(
+                    <th key={h} style={{textAlign:'left',padding:'12px 16px',fontSize:11,fontWeight:700,
+                      color:'var(--text-muted)',letterSpacing:'.05em',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(s=>{
+                  const streak=absenceStreak(s.id,attendance);
+                  const rate=attendanceRate(s.id,attendance);
+                  const sc=clsOf(s.classId);
+                  const hist=studentHistory(s.id,attendance,5);
+                  const dotC={p:'var(--leaf-500)',a:'var(--coral-500)',u:'var(--ink-200)'};
+                  return (
+                    <tr key={s.id} onClick={()=>setViewId(s.id)} style={{borderTop:'1px solid var(--border-soft)',cursor:'pointer',transition:'background 120ms ease'}}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--navy-50)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <td style={{padding:'11px 16px'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:10}}>
+                          <Av name={s.name} size="sm" />
+                          <div>
+                            <div style={{fontWeight:700,color:'var(--text-strong)',fontSize:'var(--text-sm)',whiteSpace:'nowrap'}}>{s.name}</div>
+                            {streak>=3&&<Badge tone="coral" size="sm" style={{marginTop:3}}>Absent {streak}×</Badge>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{padding:'11px 16px'}}>{sc&&<Badge tone={sc.tone} size="sm">{className(sc)}</Badge>}</td>
+                      <td style={{padding:'11px 16px',fontSize:'var(--text-sm)',color:'var(--text-body)'}}>{s.age||'—'}</td>
+                      <td style={{padding:'11px 16px'}}>
+                        <div style={{fontSize:'var(--text-sm)',color:'var(--text-body)',whiteSpace:'nowrap'}}>{s.parentName||<span style={{color:'var(--text-subtle)',fontStyle:'italic'}}>—</span>}</div>
+                        {s.parentPhone&&<div style={{fontSize:11,color:'var(--text-muted)'}}>{s.parentPhone}</div>}
+                      </td>
+                      <td style={{padding:'11px 16px',minWidth:130}}>
+                        {rate!==null ? (
+                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                            <div style={{flex:1,height:5,borderRadius:3,background:'var(--surface-sunken)',overflow:'hidden',minWidth:60}}>
+                              <div style={{width:rate+'%',height:'100%',background:rate>=80?'var(--leaf-500)':rate>=60?'var(--sky-500)':'var(--coral-500)',borderRadius:3}} />
+                            </div>
+                            <span style={{fontSize:'var(--text-xs)',fontWeight:700,color:'var(--text-strong)',width:34}}>{rate}%</span>
+                          </div>
+                        ):<span style={{fontSize:'var(--text-xs)',color:'var(--text-subtle)'}}>No data</span>}
+                      </td>
+                      <td style={{padding:'11px 16px'}}>
+                        <div style={{display:'flex',gap:4}}>
+                          {hist.map(h=>(
+                            <span key={h.date} title={fmtShort(h.date)} style={{width:14,height:14,borderRadius:'50%',background:dotC[h.mark],display:'inline-block'}} />
+                          ))}
+                        </div>
+                      </td>
+                      <td style={{padding:'11px 16px'}}>
+                        <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                          {s.parentPhone&&(
+                            <a href={`tel:${s.parentPhone}`} onClick={e=>e.stopPropagation()} style={{textDecoration:'none',width:30,height:30,borderRadius:'50%',
+                              background:'var(--leaf-100)',color:'var(--leaf-500)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                              <Icon n="phone" size={13} />
+                            </a>
+                          )}
+                          <button onClick={e=>{e.stopPropagation();setEditId(s.id);setShowForm(true);}} style={{width:30,height:30,
+                            borderRadius:'50%',border:'none',background:'var(--navy-50)',color:'var(--navy-700)',
+                            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            <Icon n="pencil" size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Phone: card list */}
+        {!isDesk && filtered.map((s,idx)=>{
           const streak=absenceStreak(s.id,attendance);
           const rate=attendanceRate(s.id,attendance);
           const sc=clsOf(s.classId);
           return (
-            <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
+            <div key={s.id} className="stagger" onClick={()=>setViewId(s.id)}
+              style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
               background:'var(--surface-card)',borderRadius:'var(--radius-lg)',marginBottom:'var(--space-3)',
-              border:'1px solid var(--border-soft)',boxShadow:'var(--shadow-xs)'}}>
+              border:'1px solid var(--border-soft)',boxShadow:'var(--shadow-xs)',cursor:'pointer',
+              animationDelay:`${Math.min(idx*22,330)}ms`,transition:'transform 150ms ease,box-shadow 150ms ease'}}
+              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='var(--shadow-md)';}}
+              onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='var(--shadow-xs)';}}>
               <Av name={s.name} size="md" />
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
@@ -819,12 +1164,13 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete }) {
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:6}}>
                 {s.parentPhone && (
-                  <a href={`tel:${s.parentPhone}`} style={{textDecoration:'none',width:34,height:34,borderRadius:'50%',
+                  <a href={`tel:${s.parentPhone}`} onClick={e=>e.stopPropagation()}
+                    style={{textDecoration:'none',width:34,height:34,borderRadius:'50%',
                     background:'var(--leaf-100)',color:'var(--leaf-500)',display:'flex',alignItems:'center',justifyContent:'center'}}>
                     <Icon n="phone" size={15} />
                   </a>
                 )}
-                <button onClick={()=>{setEditId(s.id);setShowForm(true);}} style={{width:34,height:34,
+                <button onClick={e=>{e.stopPropagation();setEditId(s.id);setShowForm(true);}} style={{width:34,height:34,
                   borderRadius:'50%',border:'none',background:'var(--navy-50)',color:'var(--navy-700)',
                   cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <Icon n="pencil" size={14} />
@@ -841,6 +1187,10 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete }) {
         onSave={data=>{ editId?onEdit({...data,id:editId}):onAdd(data); setShowForm(false); setEditId(null); }}
         onDelete={editId?()=>{onDelete(editId);setShowForm(false);setEditId(null);}:null}
         onClose={()=>{setShowForm(false);setEditId(null);}} />
+
+      <StudentSheet open={!!viewing} student={viewing} cls={viewing&&clsOf(viewing.classId)}
+        attendance={attendance} onClose={()=>setViewId(null)}
+        onEdit={()=>{ setEditId(viewId); setViewId(null); setShowForm(true); }} />
     </div>
   );
 }
@@ -904,8 +1254,109 @@ function StudentForm({ open, student, classes=[], defaultClassId, onSave, onDele
   );
 }
 
+// Tap-a-student profile: attendance history dots, rate, streak, parent contact.
+function StudentSheet({ open, student, cls, attendance, onClose, onEdit }) {
+  if(!student) return null;
+  const rate=attendanceRate(student.id,attendance);
+  const streak=absenceStreak(student.id,attendance);
+  const hist=studentHistory(student.id,attendance,10);
+  const presentCount=hist.filter(h=>h.mark==='p').length;
+  const absentCount=hist.filter(h=>h.mark==='a').length;
+  const dotColor={p:'var(--leaf-500)',a:'var(--coral-500)',u:'var(--ink-200)'};
+
+  return (
+    <Modal open={open} onClose={onClose} title="Student profile"
+      footer={<>
+        <Btn variant="ghost" size="sm" onClick={onClose}>Close</Btn>
+        <Btn variant="primary" size="sm" iL={<Icon n="pencil" size={14} />} onClick={onEdit}>Edit</Btn>
+      </>}>
+      <div style={{display:'flex',flexDirection:'column',gap:'var(--space-5)'}}>
+        {/* Identity */}
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <Av name={student.name} size="lg" />
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.01em'}}>{student.name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:5,flexWrap:'wrap'}}>
+              {cls && <Badge tone={cls.tone}>{className(cls)}</Badge>}
+              {student.age && <Badge tone="neutral">Age {student.age}</Badge>}
+              {streak>=3 && <Badge tone="coral">Absent {streak}× in a row</Badge>}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick stats */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-3)'}}>
+          {[[rate!==null?rate+'%':'—','Attendance'],[presentCount,'Present'],[absentCount,'Absent']].map(([v,l],i)=>(
+            <div key={l} style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-md)',
+              padding:'12px 8px',textAlign:'center'}}>
+              <div style={{fontSize:'var(--text-xl)',fontWeight:800,lineHeight:1,
+                color:i===0?(rate===null?'var(--text-subtle)':rate>=80?'var(--leaf-500)':rate>=60?'var(--sky-500)':'var(--coral-500)')
+                  :i===1?'var(--leaf-500)':'var(--coral-500)'}}>{v}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* History dots */}
+        <div>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',
+            textTransform:'uppercase',marginBottom:10}}>Last 10 Sundays</div>
+          <div style={{display:'flex',gap:6,justifyContent:'space-between'}}>
+            {hist.map((h,i)=>(
+              <div key={h.date} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,flex:1}}>
+                <span style={{width:'100%',maxWidth:24,aspectRatio:'1',borderRadius:'50%',background:dotColor[h.mark],
+                  display:'inline-flex',alignItems:'center',justifyContent:'center',
+                  animation:`popIn 300ms ${i*40}ms cubic-bezier(0.34,1.56,0.64,1) both`}}>
+                  {h.mark==='p'&&<Icon n="check" size={11} color="#fff" />}
+                  {h.mark==='a'&&<Icon n="x" size={10} color="#fff" />}
+                </span>
+                <span style={{fontSize:9,color:'var(--text-subtle)',fontWeight:600,whiteSpace:'nowrap'}}>{fmtShort(h.date).replace(' ',' ')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Parent contact */}
+        <div style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-lg)',padding:'var(--space-4)'}}>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',
+            textTransform:'uppercase',marginBottom:8}}>Parent / guardian</div>
+          {student.parentName||student.parentPhone ? (
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,color:'var(--text-strong)'}}>{student.parentName||'—'}</div>
+                {student.parentPhone&&<div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:2}}>{student.parentPhone}</div>}
+              </div>
+              {student.parentPhone&&(
+                <a href={`tel:${student.parentPhone}`} style={{textDecoration:'none',display:'inline-flex',
+                  alignItems:'center',gap:8,background:'var(--leaf-500)',color:'#fff',fontWeight:700,
+                  fontSize:'var(--text-sm)',padding:'10px 18px',borderRadius:'var(--radius-pill)',
+                  boxShadow:'var(--shadow-sm)'}}>
+                  <Icon n="phone" size={15} /> Call
+                </a>
+              )}
+            </div>
+          ) : (
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-subtle)',fontStyle:'italic'}}>
+              No parent info yet — tap Edit to add a phone number for absence follow-ups.
+            </div>
+          )}
+        </div>
+
+        {student.notes && (
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',
+              textTransform:'uppercase',marginBottom:6}}>Notes</div>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-body)',lineHeight:1.6}}>{student.notes}</div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 /* ── ATTENDANCE ── */
-function Attendance({ students, classes, attendance, activeClassId, setActiveClassId, onSave }) {
+function Attendance({ students, classes, attendance, activeClassId, setActiveClassId, onSave, notify }) {
+  const isDesk=useMedia('(min-width:1024px)');
   const sundays=getSundays(14);
   const [selDate,setSelDate]=useState(dk(sundays[0]));
   const [marks,setMarks]=useState({});
@@ -934,10 +1385,17 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
     const toSave=Object.fromEntries(classStudents.map(s=>[s.id,marks[s.id]]).filter(([,v])=>v!==null&&v!==undefined));
     onSave(selDate,toSave);
     setSaved(true);
+    const total=classStudents.length;
+    if(total>0 && present===total){
+      fireConfetti();
+      notify&&notify(`Everyone is here! ${present}/${total} present 🎉`);
+    } else {
+      notify&&notify(`Saved — ${present}/${total} present`);
+    }
   };
 
   return (
-    <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
+    <div className="page" style={{maxWidth:isDesk?1100:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
       <div style={{padding:'var(--space-5) var(--space-4) 0'}}>
         {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
@@ -1035,19 +1493,21 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
         </div>
       </div>
 
-      {/* Roster */}
-      <div style={{padding:'0 var(--space-4)'}}>
-        {classStudents.length===0 && <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}}>
+      {/* Roster — two columns on desktop */}
+      <div style={{padding:'0 var(--space-4)',display:'grid',gridTemplateColumns:isDesk?'1fr 1fr':'1fr',
+        columnGap:'var(--space-3)',alignItems:'start',alignContent:'start'}}>
+        {classStudents.length===0 && <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)',gridColumn:'1/-1'}}>
           No students in this class yet. Add them from the Students tab.
         </div>}
-        {classStudents.map(s=>{
+        {classStudents.map((s,idx)=>{
           const st=marks[s.id];
           const isPresent=st===true, isAbsent=st===false;
           return (
-            <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
+            <div key={s.id} className="stagger" style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
               background:'var(--surface-card)',borderRadius:'var(--radius-lg)',marginBottom:'var(--space-2)',
               border:`1.5px solid ${isPresent?'var(--leaf-500)':isAbsent?'var(--coral-500)':'var(--border-soft)'}`,
-              boxShadow:'var(--shadow-xs)',transition:'border-color 150ms ease'}}>
+              boxShadow:'var(--shadow-xs)',transition:'border-color 150ms ease',
+              animationDelay:`${Math.min(idx*18,300)}ms`}}>
               <Av name={s.name} size="md" />
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:600,color:'var(--text-strong)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
@@ -1060,7 +1520,9 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
                 color:isPresent?'#2F6B47':isAbsent?'#B23A2C':'var(--text-muted)',
                 cursor:'pointer',fontFamily:'var(--font-sans)',fontWeight:700,fontSize:'var(--text-sm)',
                 transition:'all 150ms ease',whiteSpace:'nowrap',flexShrink:0}}>
-                <Icon n={isPresent?'check':isAbsent?'x':'circle'} size={15} />
+                <span key={isPresent?'p':isAbsent?'a':'u'} style={{display:'inline-flex',animation:'popIn 280ms cubic-bezier(0.34,1.56,0.64,1)'}}>
+                  <Icon n={isPresent?'check':isAbsent?'x':'circle'} size={15} />
+                </span>
                 {isPresent?'Present':isAbsent?'Absent':'Mark'}
               </button>
             </div>
@@ -1076,11 +1538,12 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
 function Sessions({ sessions, onAdd, onEdit, onDelete }) {
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
+  const isDesk=useMedia('(min-width:1024px)');
   const sorted=[...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const editing=sessions.find(s=>s.id===editId);
 
   return (
-    <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
+    <div className="page" style={{maxWidth:isDesk?1100:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
           <div>
@@ -1091,9 +1554,10 @@ function Sessions({ sessions, onAdd, onEdit, onDelete }) {
         </div>
       </div>
 
-      <div style={{padding:'0 var(--space-4)'}}>
+      <div style={{padding:'0 var(--space-4)',display:'grid',gridTemplateColumns:isDesk?'1fr 1fr':'1fr',
+        columnGap:'var(--space-4)',alignItems:'start',alignContent:'start'}}>
         {sorted.length===0 && (
-          <div style={{textAlign:'center',padding:'var(--space-7) 0'}}>
+          <div style={{textAlign:'center',padding:'var(--space-7) 0',gridColumn:'1/-1'}}>
             <div style={{width:56,height:56,borderRadius:'var(--radius-xl)',background:'var(--navy-50)',
               display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>
               <Icon n="book-open" size={24} color="var(--navy-600)" />
@@ -1206,6 +1670,7 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
 function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpenClass }) {
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
+  const isDesk=useMedia('(min-width:1024px)');
   const today=dk(getSundays(1)[0]);
   const todayAtt=attendance[today]||{};
   const editing=classes.find(c=>c.id===editId);
@@ -1213,7 +1678,7 @@ function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpe
   const presentIn=cid=>students.filter(s=>s.classId===cid&&todayAtt[s.id]===true).length;
 
   return (
-    <div className="page" style={{maxWidth:760,margin:'0 auto'}}>
+    <div className="page" style={{maxWidth:isDesk?1240:760,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
@@ -1225,9 +1690,11 @@ function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpe
       </div>
       <div style={{padding:'0 var(--space-4)'}}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'var(--space-4)'}}>
-          {classes.map(c=>(
-            <ClassCard key={c.id} cls={c} count={countIn(c.id)} present={presentIn(c.id)}
-              onClick={()=>onOpenClass(c.id)} onEdit={()=>{setEditId(c.id);setShowForm(true);}} />
+          {classes.map((c,i)=>(
+            <div key={c.id} className="stagger" style={{animationDelay:`${i*70}ms`}}>
+              <ClassCard cls={c} count={countIn(c.id)} present={presentIn(c.id)}
+                onClick={()=>onOpenClass(c.id)} onEdit={()=>{setEditId(c.id);setShowForm(true);}} />
+            </div>
           ))}
         </div>
         {classes.length===0 && (
@@ -1341,6 +1808,8 @@ function Sidebar({ tab, onTab, count }) {
         </div>
       </div>
       <nav style={{display:'flex',flexDirection:'column',gap:3,flex:1}}>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',
+          color:'var(--navy-500)',padding:'4px 14px 6px'}}>Menu</div>
         {TABS.map(({id,i,l})=>{
           const on=tab===id;
           return <button key={id} onClick={()=>onTab(id)} style={{
@@ -1380,6 +1849,15 @@ function App() {
   const saveSess=v=>{setSessions(v);save(SK.sessions,v);};
   const saveCls=v=>{setClasses(v);save(SK.classes,v);};
 
+  // Toast notifications
+  const [toast,setToast]=useState(null);
+  const notify=(msg,icon)=>setToast({msg,icon,key:Date.now()});
+  useEffect(()=>{
+    if(!toast) return;
+    const t=setTimeout(()=>setToast(null),2400);
+    return()=>clearTimeout(t);
+  },[toast]);
+
   const resetAll=()=>{
     [SK.children,SK.attendance,SK.sessions,SK.classes].forEach(k=>{ try{localStorage.removeItem(k);}catch{} });
     setStudents(INITIAL_STUDENTS); setAttendance({}); setSessions([]); setClasses(INITIAL_CLASSES);
@@ -1388,39 +1866,46 @@ function App() {
 
   const openClass=(cid)=>{ setActiveClassId(cid); setTab('attendance'); };
 
+  // Global search (desktop dashboard header) → jump to Students with the query
+  const [studentSeed,setStudentSeed]=useState(null);
+  const doSearch=q=>{ setStudentSeed({q,n:Date.now()}); setTab('students'); };
+
   const screens={
     dashboard:<Dashboard students={students} attendance={attendance} sessions={sessions} classes={classes}
-      onNav={setTab} onReset={resetAll} onOpenClass={openClass} />,
+      onNav={setTab} onReset={resetAll} onOpenClass={openClass} onSearch={doSearch} />,
     classes:<Classes classes={classes} students={students} attendance={attendance}
-      onAdd={d=>saveCls([...classes,{...d,id:uid()}])}
-      onEdit={d=>saveCls(classes.map(c=>c.id===d.id?d:c))}
+      onAdd={d=>{saveCls([...classes,{...d,id:uid()}]);notify('Class created');}}
+      onEdit={d=>{saveCls(classes.map(c=>c.id===d.id?d:c));notify('Class updated');}}
       onDelete={id=>{ saveCls(classes.filter(c=>c.id!==id));
         // reassign orphaned students to the first remaining class
         const rest=classes.filter(c=>c.id!==id); const fallback=rest[0]&&rest[0].id;
-        if(fallback) saveS(students.map(s=>s.classId===id?{...s,classId:fallback}:s)); }}
+        if(fallback) saveS(students.map(s=>s.classId===id?{...s,classId:fallback}:s));
+        notify('Class deleted'); }}
       onOpenClass={openClass} />,
-    students:<Students students={students} classes={classes} attendance={attendance}
-      onAdd={d=>saveS([...students,{...d,id:uid(),addedAt:dk(new Date())}])}
-      onEdit={d=>saveS(students.map(s=>s.id===d.id?d:s))}
-      onDelete={id=>saveS(students.filter(s=>s.id!==id))} />,
+    students:<Students students={students} classes={classes} attendance={attendance} seed={studentSeed}
+      onAdd={d=>{saveS([...students,{...d,id:uid(),addedAt:dk(new Date())}]);notify('Student added');}}
+      onEdit={d=>{saveS(students.map(s=>s.id===d.id?d:s));notify('Student updated');}}
+      onDelete={id=>{saveS(students.filter(s=>s.id!==id));notify('Student removed');}} />,
     attendance:<Attendance students={students} classes={classes} attendance={attendance}
-      activeClassId={activeClassId} setActiveClassId={setActiveClassId} onSave={(ds,marks)=>{
+      activeClassId={activeClassId} setActiveClassId={setActiveClassId} notify={notify} onSave={(ds,marks)=>{
         const n={...attendance,[ds]:{...(attendance[ds]||{}),...marks}};setAttendance(n);save(SK.attendance,n);
       }} />,
     sessions:<Sessions sessions={sessions}
-      onAdd={d=>saveSess([...sessions,{...d,id:uid()}])}
-      onEdit={d=>saveSess(sessions.map(s=>s.id===d.id?d:s))}
-      onDelete={id=>saveSess(sessions.filter(s=>s.id!==id))} />,
+      onAdd={d=>{saveSess([...sessions,{...d,id:uid()}]);notify('Session planned');}}
+      onEdit={d=>{saveSess(sessions.map(s=>s.id===d.id?d:s));notify('Session updated');}}
+      onDelete={id=>{saveSess(sessions.filter(s=>s.id!==id));notify('Session removed');}} />,
   };
 
   return (
     <>
       {/* Mobile */}
       <div style={{display:'block'}} className="desktop-hidden">
-        {screens[tab]}
+        <div key={tab} className="screen-enter">{screens[tab]}</div>
         <nav className="bottom-nav">
           {TABS.map(({id,i,l})=>(
-            <button key={id} className={`nav-btn${tab===id?' active':''}`} onClick={()=>setTab(id)}>
+            <button key={id} className={`nav-btn${tab===id?' active':''}`} onClick={()=>setTab(id)} style={{position:'relative'}}>
+              {tab===id && <span style={{position:'absolute',top:0,left:'50%',marginLeft:-12,width:24,height:3,
+                borderRadius:'0 0 3px 3px',background:'var(--navy-800)',animation:'navDot 220ms cubic-bezier(0.22,1,0.36,1)'}} />}
               <Icon n={i} size={22} color={tab===id?'var(--navy-800)':'var(--ink-400)'} />
               {l}
             </button>
@@ -1432,9 +1917,11 @@ function App() {
       <div className="desktop-shell" style={{display:'none'}}>
         <Sidebar tab={tab} onTab={setTab} count={students.length} />
         <main style={{overflowY:'auto',minWidth:0,background:'var(--surface-app)'}}>
-          {screens[tab]}
+          <div key={tab} className="screen-enter">{screens[tab]}</div>
         </main>
       </div>
+
+      <Toast toast={toast} />
 
       <style>{`
         @media(min-width:768px){
