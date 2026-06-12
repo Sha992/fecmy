@@ -63,7 +63,7 @@ input,textarea,select,button{font-family:var(--font-sans)}
   letter-spacing:.02em;color:var(--text-muted);transition:color 120ms ease;
 }
 .nav-btn.active{color:var(--navy-800)}
-.page{padding-bottom:calc(70px + env(safe-area-inset-bottom));min-height:100dvh}
+.page{padding-bottom:calc(96px + env(safe-area-inset-bottom));min-height:100dvh}
 @media(min-width:768px){
   .bottom-nav{display:none}
   .page{padding-bottom:0;min-height:unset}
@@ -129,22 +129,41 @@ const SK = { children:'fecmy_children', attendance:'fecmy_attendance', sessions:
 const CLOUD_CFG_KEY='fecmy_cloud';
 const LANG_KEY='fecmy_lang';
 
-// SQL the user pastes into Supabase's SQL editor (one time) to create the shared database.
-const SETUP_SQL=`-- FECMY Children Ministry — shared database setup
-create table if not exists students  (id text primary key, data jsonb not null, updated_at timestamptz default now());
-create table if not exists classes   (id text primary key, data jsonb not null, updated_at timestamptz default now());
-create table if not exists sessions  (id text primary key, data jsonb not null, updated_at timestamptz default now());
-create table if not exists attendance(date text primary key, marks jsonb not null, updated_at timestamptz default now());
+/* ════════════════════════════════════════════════════════════════
+   OPTIONAL ZERO-SETUP SYNC — paste your Supabase project values
+   between the quotes below before uploading to GitHub, and every
+   teacher gets team sync automatically: they just open the site and
+   sign in. (The anon key is safe to publish — data is protected by
+   sign-in + row-level security. Disable public sign-ups in Supabase
+   once your teachers have accounts.)
+   ════════════════════════════════════════════════════════════════ */
+const DEFAULT_CLOUD = {
+  url: '',   // e.g. 'https://abcdefgh.supabase.co'
+  key: '',   // the long 'anon public' key
+};
 
-alter table students   enable row level security;
-alter table classes    enable row level security;
-alter table sessions   enable row level security;
-alter table attendance enable row level security;
+// Invite links: opening <site-url>#join=<token> stores the project
+// config on that device automatically — co-teachers never type it.
+(function(){
+  try{
+    const m=location.hash.match(/#join=([^&]+)/);
+    if(m){
+      const [url,key]=atob(decodeURIComponent(m[1])).split('|');
+      if(url&&key&&/^https:\/\//.test(url)){
+        localStorage.setItem(CLOUD_CFG_KEY,JSON.stringify({url,key}));
+        history.replaceState(null,'',location.pathname+location.search);
+      }
+    }
+  }catch{}
+})();
 
-create policy "team_all_students"   on students   for all to authenticated using (true) with check (true);
-create policy "team_all_classes"    on classes    for all to authenticated using (true) with check (true);
-create policy "team_all_sessions"   on sessions   for all to authenticated using (true) with check (true);
-create policy "team_all_attendance" on attendance for all to authenticated using (true) with check (true);`;
+// Effective cloud config: device-stored first, then the published default.
+function cloudCfg(){
+  const c=load(CLOUD_CFG_KEY,null);
+  if(c&&c.url&&c.key) return c;
+  if(DEFAULT_CLOUD.url&&DEFAULT_CLOUD.key) return DEFAULT_CLOUD;
+  return null;
+}
 
 /* ── i18n — English / Amharic. Anything not in the dictionary stays English. ── */
 const AM={
@@ -1084,13 +1103,16 @@ function CloudSection({ cloud, api }) {
   const [pw,setPw]=useState('');
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState(null);
-  const [copied,setCopied]=useState(false);
-  const [showSetup,setShowSetup]=useState(false);
+  const [invCopied,setInvCopied]=useState(false);
   const run=async fn=>{ setBusy(true); setMsg(null);
     try{ await fn(); }catch(e){ setMsg(e.message||String(e)); } setBusy(false); };
-  const copySql=()=>{
-    try{ navigator.clipboard.writeText(SETUP_SQL); setCopied(true); setTimeout(()=>setCopied(false),2000); }
-    catch{ setMsg('Copy failed — long-press to select the SQL from the setup guide instead'); }
+  const copyInvite=()=>{
+    const c=cloudCfg();
+    if(!c){ setMsg('Connect first'); return; }
+    if(!/^http/.test(location.protocol)){ setMsg('Invite links work once the app is online (e.g. GitHub Pages)'); return; }
+    const link=location.origin+location.pathname+'#join='+encodeURIComponent(btoa(c.url+'|'+c.key));
+    try{ navigator.clipboard.writeText(link); setInvCopied(true); setTimeout(()=>setInvCopied(false),2200); }
+    catch{ setMsg('Could not copy — send your co-teachers the URL and key instead'); }
   };
   const inp={width:'100%',padding:'10px 12px',borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
     background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-sm)',color:'var(--text-strong)',outline:'none'};
@@ -1116,24 +1138,9 @@ function CloudSection({ cloud, api }) {
         <div>
           <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',lineHeight:1.55,marginBottom:10}}>
             Share one live database with your co-teachers — everyone sees the same students and attendance.
-            Needs a free Supabase project (~5 min, one person does it once).
+            Got an <b>invite link</b> from your coordinator? Just open it — this screen switches to sign-in
+            by itself. Setting up a new team? Your coordinator has the setup instructions.
           </div>
-          <button onClick={()=>setShowSetup(s=>!s)} style={{background:'none',border:'none',cursor:'pointer',padding:0,
-            fontSize:'var(--text-xs)',fontWeight:700,color:'var(--navy-600)',fontFamily:'var(--font-sans)',marginBottom:10}}>
-            {showSetup?'Hide setup steps ▴':'Show setup steps ▾'}
-          </button>
-          {showSetup && (
-            <ol style={{margin:'0 0 12px',paddingLeft:18,fontSize:'var(--text-xs)',color:'var(--text-body)',
-              lineHeight:1.7,display:'flex',flexDirection:'column',gap:4}}>
-              <li>Go to <b>supabase.com</b> → sign up free → <b>New project</b> (any name, e.g. “fecmy”).</li>
-              <li>In the project: <b>SQL Editor</b> → paste the setup SQL → <b>Run</b>.
-                <Btn variant="secondary" size="sm" style={{marginLeft:8,padding:'4px 10px'}} iL={<Icon n="copy" size={13} />}
-                  onClick={copySql}>{copied?'Copied!':'Copy SQL'}</Btn>
-              </li>
-              <li><b>Authentication → Sign In / Up</b>: leave email enabled. (After all teachers join, you can turn off sign-ups.)</li>
-              <li><b>Project Settings → Data API</b>: copy the <b>Project URL</b> and the <b>anon public</b> key, paste below.</li>
-            </ol>
-          )}
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             <input style={inp} placeholder="Project URL — https://xxxx.supabase.co" value={url} onChange={e=>setUrl(e.target.value)} />
             <input style={inp} placeholder="anon public key — eyJhbGciOi…" value={key} onChange={e=>setKey(e.target.value)} />
@@ -1158,7 +1165,10 @@ function CloudSection({ cloud, api }) {
             <Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginLeft:'auto'}}
               onClick={api.disconnect}>Disconnect</Btn>
           </div>
-          <div style={{fontSize:10,color:'var(--text-subtle)'}}>Password must be 6+ characters for new accounts.</div>
+          <div style={{fontSize:10,color:'var(--text-subtle)',lineHeight:1.5}}>
+            Password must be 6+ characters for new accounts. If “Create account” is rejected, sign-ups are
+            (correctly) locked — ask your coordinator to add your account in Supabase.
+          </div>
         </div>
       )}
 
@@ -1170,15 +1180,28 @@ function CloudSection({ cloud, api }) {
           </div>
           {cloud.status==='error'&&<div style={{fontSize:'var(--text-xs)',color:'var(--danger-500)',lineHeight:1.5}}>{cloud.err}</div>}
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <Btn variant="primary" size="sm" iL={<Icon n="copy" size={14} />} onClick={copyInvite}>
+              {invCopied?'Link copied!':'Copy invite link'}
+            </Btn>
             <Btn variant="secondary" size="sm" disabled={busy||cloud.status==='syncing'}
               iL={<Icon n="refresh" size={14} />} onClick={()=>run(api.syncNow)}>Sync now</Btn>
             <Btn variant="ghost" size="sm" iL={<Icon n="log-out" size={14} />} onClick={api.signOut}>Sign out</Btn>
             <Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginLeft:'auto'}}
               onClick={api.disconnect}>Disconnect</Btn>
           </div>
+          <div style={{fontSize:10,color:'var(--text-subtle)',lineHeight:1.5}}>
+            Send the invite link to co-teachers (Telegram/WhatsApp) — opening it sets up their phone automatically; they only sign in with their own email + password.
+          </div>
         </div>
       )}
 
+      {(cloud.status==='error'||cloud.status==='connecting')&&!cloud.user&&(
+        <div style={{fontSize:'var(--text-xs)',color:cloud.status==='error'?'var(--danger-500)':'var(--text-muted)',lineHeight:1.5}}>
+          {cloud.err||'Connecting…'} — check your internet and reload, or
+          <button onClick={api.disconnect} style={{background:'none',border:'none',cursor:'pointer',padding:'0 0 0 4px',
+            fontFamily:'var(--font-sans)',fontSize:'inherit',fontWeight:700,color:'var(--danger-500)'}}>disconnect</button>.
+        </div>
+      )}
       {msg&&<div style={{fontSize:'var(--text-xs)',color:'var(--danger-500)',marginTop:8,lineHeight:1.5}}>{msg}</div>}
     </div>
   );
@@ -1306,7 +1329,7 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed
   const viewing=students.find(s=>s.id===viewId);
 
   return (
-    <div className="page" style={{maxWidth:isDesk?1240:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
+    <div className="page" style={{maxWidth:isDesk?1240:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':undefined}}>
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
           <div>
@@ -1729,7 +1752,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
   };
 
   return (
-    <div className="page" style={{maxWidth:isDesk?1100:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
+    <div className="page" style={{maxWidth:isDesk?1100:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':undefined}}>
       <div style={{padding:'var(--space-5) var(--space-4) 0'}}>
         {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
@@ -1907,7 +1930,7 @@ function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
   const editing=sessions.find(s=>s.id===editId);
 
   return (
-    <div className="page" style={{maxWidth:isDesk?1100:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
+    <div className="page" style={{maxWidth:isDesk?1100:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':undefined}}>
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
           <div>
@@ -2042,7 +2065,7 @@ function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpe
   const presentIn=cid=>students.filter(s=>s.classId===cid&&todayAtt[s.id]===true).length;
 
   return (
-    <div className="page" style={{maxWidth:isDesk?1240:760,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
+    <div className="page" style={{maxWidth:isDesk?1240:760,margin:'0 auto',padding:isDesk?'8px 36px 32px':undefined}}>
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
@@ -2176,7 +2199,7 @@ function Reports({ students, classes, attendance, t=s=>s }) {
   let best=null; colTotals.forEach((c,i)=>{ if(c.n>0){ const r=c.p/c.n; if(!best||r>best.r) best={r,i}; } });
 
   return (
-    <div className="page" style={{maxWidth:isDesk?1240:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
+    <div className="page" style={{maxWidth:isDesk?1240:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':undefined}}>
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}} className="no-print">
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)',gap:10,flexWrap:'wrap'}}>
           <div>
@@ -2379,7 +2402,7 @@ function App() {
   const dirtyRef=useRef(false);
   const pushTimer=useRef(null);
   const [cloud,setCloud]=useState(()=>{
-    const c=load(CLOUD_CFG_KEY,null);
+    const c=cloudCfg();
     return { cfg:c, user:null, status:c?'connecting':'off', last:null, err:null };
   });
   const cloudRef=useRef(cloud);
@@ -2387,7 +2410,7 @@ function App() {
 
   const getClient=()=>{
     if(sbRef.current) return sbRef.current;
-    const c=load(CLOUD_CFG_KEY,null);
+    const c=cloudCfg();
     if(!c||!window.supabase) return null;
     try{ sbRef.current=window.supabase.createClient(c.url,c.key); }catch{ return null; }
     return sbRef.current;
