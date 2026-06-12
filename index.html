@@ -10,6 +10,7 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root {
   --navy-900:#021A2B;--navy-800:#03273F;--navy-700:#0A3956;--navy-600:#14506F;
@@ -82,6 +83,13 @@ input,textarea,select,button{font-family:var(--font-sans)}
 @keyframes navDot{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .screen-enter{animation:fadeUp 240ms cubic-bezier(0.22,1,0.36,1)}
 .stagger{animation:fadeUp 320ms cubic-bezier(0.22,1,0.36,1) both}
+@media print{
+  body *{visibility:hidden}
+  .print-area,.print-area *{visibility:visible}
+  .print-area{position:absolute;left:0;top:0;width:100%;padding:0!important}
+  .no-print{display:none!important}
+  body{background:#fff}
+}
 </style>
 </head>
 <body>
@@ -118,6 +126,54 @@ const classTeachers = c => (c.teachers && c.teachers.length) ? c.teachers : (c.t
 const byName = (a,b) => a.name.localeCompare(b.name, 'am');
 
 const SK = { children:'fecmy_children', attendance:'fecmy_attendance', sessions:'fecmy_sessions', classes:'fecmy_classes' };
+const CLOUD_CFG_KEY='fecmy_cloud';
+const LANG_KEY='fecmy_lang';
+
+// SQL the user pastes into Supabase's SQL editor (one time) to create the shared database.
+const SETUP_SQL=`-- FECMY Children Ministry — shared database setup
+create table if not exists students  (id text primary key, data jsonb not null, updated_at timestamptz default now());
+create table if not exists classes   (id text primary key, data jsonb not null, updated_at timestamptz default now());
+create table if not exists sessions  (id text primary key, data jsonb not null, updated_at timestamptz default now());
+create table if not exists attendance(date text primary key, marks jsonb not null, updated_at timestamptz default now());
+
+alter table students   enable row level security;
+alter table classes    enable row level security;
+alter table sessions   enable row level security;
+alter table attendance enable row level security;
+
+create policy "team_all_students"   on students   for all to authenticated using (true) with check (true);
+create policy "team_all_classes"    on classes    for all to authenticated using (true) with check (true);
+create policy "team_all_sessions"   on sessions   for all to authenticated using (true) with check (true);
+create policy "team_all_attendance" on attendance for all to authenticated using (true) with check (true);`;
+
+/* ── i18n — English / Amharic. Anything not in the dictionary stays English. ── */
+const AM={
+  'Dashboard':'ዳሽቦርድ','Classes':'ክፍሎች','Attendance':'መገኘት','Students':'ተማሪዎች','Sessions':'ትምህርቶች','Reports':'ሪፖርቶች',
+  'Save':'አስቀምጥ','Saved':'ተቀምጧል','Add':'ጨምር','Edit':'አርም','Close':'ዝጋ','Cancel':'ሰርዝ','Delete':'አጥፋ',
+  'Present':'ተገኝቷል','Absent':'ቀርቷል','Mark':'መዝግብ','All present':'ሁሉም ተገኝተዋል','All absent':'ሁሉም ቀርተዋል',
+  'Take attendance':'መገኘት መዝግብ','View students':'ተማሪዎችን ተመልከት','Settings':'ቅንብሮች',
+  'Students enrolled':'የተመዘገቡ ተማሪዎች','Need follow-up':'ክትትል የሚያስፈልጋቸው','Unmarked':'ያልተመዘገቡ',
+  'Attendance rate':'የመገኘት መጠን','Checked in':'ተመዝግበዋል','Teacher':'መምህር','Teachers':'መምህራን',
+  'Add visitor':'እንግዳ ጨምር','Visitor':'እንግዳ','Visitors':'እንግዶች','New class':'አዲስ ክፍል',
+  'Birthdays':'የልደት ቀናት','Good morning':'እንደምን አደሩ','Good afternoon':'እንደምን ዋሉ','Good evening':'እንደምን አመሹ',
+  'Search students or parents…':'ተማሪ ወይም ወላጅ ፈልግ…','Plan':'እቅድ','Plan a lesson':'ትምህርት አቅድ',
+  'Today’s classes':'የዛሬ ክፍሎች','Recent attendance':'የቅርብ ጊዜ መገኘት','Attendance trend':'የመገኘት አዝማሚያ','Next session':'ቀጣይ ትምህርት',
+};
+function tr(lang,s){ return lang==='am' && AM[s] ? AM[s] : s; }
+
+/* ── Birthday helpers — birthday stored as "MM-DD" or "YYYY-MM-DD" ── */
+function nextBirthdayInfo(bday){
+  if(!bday) return null;
+  const m=bday.match(/^(?:(\d{4})-)?(\d{2})-(\d{2})$/);
+  if(!m) return null;
+  const [,yr,mo,da]=m;
+  const now=new Date(); now.setHours(0,0,0,0);
+  let next=new Date(now.getFullYear(),Number(mo)-1,Number(da));
+  if(next<now) next=new Date(now.getFullYear()+1,Number(mo)-1,Number(da));
+  const days=Math.round((next-now)/86400000);
+  const turning=yr?next.getFullYear()-Number(yr):null;
+  return { days, turning, date:next };
+}
 
 function load(k, def) { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch{return def;} }
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch{} }
@@ -240,6 +296,15 @@ const ICONS = {
   'percent':'M19 5 5 19M4.75 6.5a1.75 1.75 0 1 0 3.5 0 1.75 1.75 0 1 0-3.5 0M15.75 17.5a1.75 1.75 0 1 0 3.5 0 1.75 1.75 0 1 0-3.5 0',
   'settings':'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
   'refresh':'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
+  'cloud':'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z',
+  'upload':'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  'copy':'M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
+  'log-out':'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  'cake':'M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1M2 21h20M7 8v3M12 8v3M17 8v3M7 4h.01M12 4h.01M17 4h.01',
+  'printer':'M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z',
+  'globe':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z',
+  'sparkles':'M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z',
+  'bar-chart':'M12 20V10M18 20V4M6 20v-4',
 };
 
 function Icon({ n, size=20, color, style={} }) {
@@ -684,6 +749,67 @@ function RecentCard({ recentKeys, attendance, onNav }) {
   );
 }
 
+function BirthdaysCard({ list, t=s=>s }) {
+  return (
+    <div>
+      <SectionLabel>{t('Birthdays')}</SectionLabel>
+      <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+        borderRadius:'var(--radius-lg)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
+        {list.map(({s,b},i)=>(
+          <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
+            borderBottom:i<list.length-1?'1px solid var(--border-soft)':'none'}}>
+            <span style={{width:34,height:34,borderRadius:'var(--radius-md)',background:'var(--coral-100)',
+              color:'var(--coral-500)',display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <Icon n="cake" size={16} />
+            </span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:'var(--text-sm)',color:'var(--text-strong)',
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>
+                {b.days===0?'Today!':b.days===1?'Tomorrow':`In ${b.days} days`}
+                {b.turning?` · turning ${b.turning}`:''}
+              </div>
+            </div>
+            <span style={{fontSize:'var(--text-xs)',fontWeight:700,color:'var(--coral-500)'}}>{fmtShort(dk(b.date))}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VisitorsCard({ list, attendance, onNav, t=s=>s }) {
+  return (
+    <div>
+      <SectionLabel action={
+        <button onClick={()=>onNav('students')} style={{background:'none',border:'none',cursor:'pointer',
+          fontSize:'var(--text-xs)',color:'var(--navy-600)',fontWeight:600,fontFamily:'var(--font-sans)'}}>View →</button>
+      }>{t('Visitors')}</SectionLabel>
+      <div style={{background:'var(--grape-100)',borderRadius:'var(--radius-lg)',padding:'var(--space-3)',
+        border:'1px solid rgba(142,111,176,.2)',display:'flex',flexDirection:'column',gap:6}}>
+        {list.map(s=>(
+          <div key={s.id} style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper)',
+            borderRadius:'var(--radius-md)',padding:'9px 12px'}}>
+            <Av name={s.name} size="sm" />
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:'var(--text-sm)',color:'var(--text-strong)',
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>First visit {s.firstVisit?fmtShort(s.firstVisit):'—'}</div>
+            </div>
+            {s.parentPhone&&(
+              <a href={`tel:${s.parentPhone}`} style={{textDecoration:'none',width:30,height:30,borderRadius:'50%',
+                background:'var(--grape-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <Icon n="phone" size={13} />
+              </a>
+            )}
+          </div>
+        ))}
+        <div style={{fontSize:11,color:'#5C4480',padding:'2px 4px'}}>Follow up this week to welcome them back.</div>
+      </div>
+    </div>
+  );
+}
+
 function SearchBox({ onSubmit, width=250 }) {
   const [v,setV]=useState('');
   return (
@@ -704,7 +830,8 @@ function SearchBox({ onSubmit, width=250 }) {
 }
 
 /* ── DASHBOARD ── */
-function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset, onOpenClass, onSearch }) {
+function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset, onOpenClass, onSearch,
+  cloud, cloudApi, lang, setLanguage, t=s=>s }) {
   const [showSettings, setShowSettings] = useState(false);
   const realToday = dk(new Date());           // the actual calendar date
   const today = dk(getSundays(1)[0]);          // the class day (this/most-recent Sunday)
@@ -745,9 +872,14 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
   ];
   const showChecklist = students.length>0 && steps.some(s=>!s.done);
 
+  // Upcoming birthdays (next 14 days) and flagged first-time visitors
+  const birthdays = students.map(s=>({s,b:nextBirthdayInfo(s.birthday)}))
+    .filter(x=>x.b&&x.b.days<=14).sort((a,b)=>a.b.days-b.b.days).slice(0,6);
+  const visitors = students.filter(s=>s.visitor).slice(0,6);
+
   const isDesk = useMedia('(min-width:1024px)');
   const hour = new Date().getHours();
-  const greeting = 'Good ' + (hour<12?'morning':hour<18?'afternoon':'evening');
+  const greeting = t(hour<12?'Good morning':hour<18?'Good afternoon':'Good evening');
   const subtitle = marked>0
     ? `${present} checked in ${isSunday?'today':'on '+fmtShort(today)}`
     : (isSunday?'No attendance yet today':`Sunday ${fmtShort(today)} not recorded yet`);
@@ -765,7 +897,18 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         </div>
         <div style={{marginLeft:'auto',display:'flex',gap:10,alignItems:'center'}}>
           <SearchBox onSubmit={q=>onSearch&&onSearch(q)} />
-          <Btn variant="primary" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>Take attendance</Btn>
+          <Btn variant="primary" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>{t('Take attendance')}</Btn>
+          {cloud&&cloud.status!=='off'&&(
+            <button onClick={()=>setShowSettings(true)} title={cloud.status==='synced'?'Team sync on':'Sync needs attention'}
+              style={{display:'flex',alignItems:'center',gap:6,padding:'8px 13px',borderRadius:'var(--radius-pill)',
+                border:'1px solid var(--border-default)',cursor:'pointer',fontFamily:'var(--font-sans)',
+                fontSize:11,fontWeight:700,
+                background:cloud.status==='synced'?'var(--leaf-100)':cloud.status==='error'?'var(--danger-100)':'var(--surface-card)',
+                color:cloud.status==='synced'?'#2F6B47':cloud.status==='error'?'#A93B33':'var(--text-muted)'}}>
+              <Icon n="cloud" size={14} />
+              {cloud.status==='synced'?'Synced':cloud.status==='syncing'?'Syncing…':cloud.status==='error'?'Error':'Sign in'}
+            </button>
+          )}
           <button onClick={()=>setShowSettings(true)} aria-label="Settings" style={{width:40,height:40,borderRadius:'50%',
             border:'1px solid var(--border-default)',background:'var(--paper)',color:'var(--text-muted)',
             cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -826,13 +969,16 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
           {showChecklist && <ChecklistCard steps={steps} onNav={onNav} />}
           {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
+          {birthdays.length>0 && <BirthdaysCard list={birthdays} t={t} />}
+          {visitors.length>0 && <VisitorsCard list={visitors} attendance={attendance} onNav={onNav} t={t} />}
           {upcoming && <NextSessionCard upcoming={upcoming} />}
           {recentKeys.length>0 && <RecentCard recentKeys={recentKeys} attendance={attendance} onNav={onNav} />}
         </div>
       </div>
 
       <SettingsSheet open={showSettings} onClose={()=>setShowSettings(false)} onReset={onReset}
-        students={students} attendance={attendance} sessions={sessions} />
+        students={students} attendance={attendance} sessions={sessions}
+        cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t} />
     </div>
   );
 
@@ -862,7 +1008,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
             {fmtFull(realToday)}
           </div>
           <h1 style={{fontSize:'var(--text-2xl)',fontWeight:800,marginTop:6,letterSpacing:'-.02em',lineHeight:1.15}}>
-            Good {new Date().getHours()<12?'morning':new Date().getHours()<18?'afternoon':'evening'}
+            {greeting}
           </h1>
           <p style={{fontSize:'var(--text-sm)',color:'var(--navy-100)',marginTop:4,lineHeight:1.5}}>
             {students.length} students · {marked>0
@@ -871,11 +1017,11 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
           </p>
           <div style={{display:'flex',gap:10,marginTop:16,flexWrap:'wrap'}}>
             <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>
-              Take attendance
+              {t('Take attendance')}
             </Btn>
             <Btn variant="ghost" size="sm" onClick={()=>onNav('students')}
               style={{color:'var(--cream-50)',borderColor:'rgba(251,247,240,.3)'}}>
-              View students
+              {t('View students')}
             </Btn>
           </div>
         </div>
@@ -897,6 +1043,10 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
             onOpenClass={onOpenClass} onNav={onNav} />}
 
         {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
+
+        {birthdays.length>0 && <BirthdaysCard list={birthdays} t={t} />}
+
+        {visitors.length>0 && <VisitorsCard list={visitors} attendance={attendance} onNav={onNav} t={t} />}
 
         {upcoming && <NextSessionCard upcoming={upcoming} />}
 
@@ -920,15 +1070,136 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
       </div>
 
       <SettingsSheet open={showSettings} onClose={()=>setShowSettings(false)} onReset={onReset}
-        students={students} attendance={attendance} sessions={sessions} />
+        students={students} attendance={attendance} sessions={sessions}
+        cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t} />
     </div>
   );
 }
 
-function SettingsSheet({ open, onClose, onReset, students, attendance, sessions }) {
+// Cloud sync panel inside Settings — connect → sign in → synced.
+function CloudSection({ cloud, api }) {
+  const [url,setUrl]=useState('');
+  const [key,setKey]=useState('');
+  const [email,setEmail]=useState('');
+  const [pw,setPw]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState(null);
+  const [copied,setCopied]=useState(false);
+  const [showSetup,setShowSetup]=useState(false);
+  const run=async fn=>{ setBusy(true); setMsg(null);
+    try{ await fn(); }catch(e){ setMsg(e.message||String(e)); } setBusy(false); };
+  const copySql=()=>{
+    try{ navigator.clipboard.writeText(SETUP_SQL); setCopied(true); setTimeout(()=>setCopied(false),2000); }
+    catch{ setMsg('Copy failed — long-press to select the SQL from the setup guide instead'); }
+  };
+  const inp={width:'100%',padding:'10px 12px',borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
+    background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-sm)',color:'var(--text-strong)',outline:'none'};
+  const statusChip={
+    off:{bg:'var(--ink-100)',fg:'var(--ink-700)',label:'Local only'},
+    connecting:{bg:'var(--sky-100)',fg:'#286179',label:'Connecting…'},
+    signedout:{bg:'var(--warning-100)',fg:'#9A6A12',label:'Sign in needed'},
+    syncing:{bg:'var(--sky-100)',fg:'#286179',label:'Syncing…'},
+    synced:{bg:'var(--leaf-100)',fg:'#2F6B47',label:'Synced'},
+    error:{bg:'var(--danger-100)',fg:'#A93B33',label:'Sync error'},
+  }[cloud.status]||{bg:'var(--ink-100)',fg:'var(--ink-700)',label:cloud.status};
+
+  return (
+    <div style={{borderTop:'1px solid var(--border-soft)',paddingTop:'var(--space-4)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+        <Icon n="cloud" size={17} color="var(--navy-700)" />
+        <span style={{fontSize:'var(--text-sm)',fontWeight:700,color:'var(--text-strong)'}}>Team sync</span>
+        <span style={{marginLeft:'auto',fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:'var(--radius-pill)',
+          background:statusChip.bg,color:statusChip.fg}}>{statusChip.label}</span>
+      </div>
+
+      {cloud.status==='off' && (
+        <div>
+          <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',lineHeight:1.55,marginBottom:10}}>
+            Share one live database with your co-teachers — everyone sees the same students and attendance.
+            Needs a free Supabase project (~5 min, one person does it once).
+          </div>
+          <button onClick={()=>setShowSetup(s=>!s)} style={{background:'none',border:'none',cursor:'pointer',padding:0,
+            fontSize:'var(--text-xs)',fontWeight:700,color:'var(--navy-600)',fontFamily:'var(--font-sans)',marginBottom:10}}>
+            {showSetup?'Hide setup steps ▴':'Show setup steps ▾'}
+          </button>
+          {showSetup && (
+            <ol style={{margin:'0 0 12px',paddingLeft:18,fontSize:'var(--text-xs)',color:'var(--text-body)',
+              lineHeight:1.7,display:'flex',flexDirection:'column',gap:4}}>
+              <li>Go to <b>supabase.com</b> → sign up free → <b>New project</b> (any name, e.g. “fecmy”).</li>
+              <li>In the project: <b>SQL Editor</b> → paste the setup SQL → <b>Run</b>.
+                <Btn variant="secondary" size="sm" style={{marginLeft:8,padding:'4px 10px'}} iL={<Icon n="copy" size={13} />}
+                  onClick={copySql}>{copied?'Copied!':'Copy SQL'}</Btn>
+              </li>
+              <li><b>Authentication → Sign In / Up</b>: leave email enabled. (After all teachers join, you can turn off sign-ups.)</li>
+              <li><b>Project Settings → Data API</b>: copy the <b>Project URL</b> and the <b>anon public</b> key, paste below.</li>
+            </ol>
+          )}
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <input style={inp} placeholder="Project URL — https://xxxx.supabase.co" value={url} onChange={e=>setUrl(e.target.value)} />
+            <input style={inp} placeholder="anon public key — eyJhbGciOi…" value={key} onChange={e=>setKey(e.target.value)} />
+            <Btn variant="primary" size="sm" disabled={busy||!url.trim()||!key.trim()}
+              iL={<Icon n="cloud" size={15} />} onClick={()=>run(async()=>api.connect(url,key))}>Connect</Btn>
+          </div>
+        </div>
+      )}
+
+      {cloud.status==='signedout' && (
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)'}}>
+            Connected to the project — sign in with your teacher account.
+          </div>
+          <input style={inp} type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
+          <input style={inp} type="password" placeholder="Password" value={pw} onChange={e=>setPw(e.target.value)} />
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <Btn variant="primary" size="sm" disabled={busy||!email.trim()||!pw}
+              onClick={()=>run(()=>api.signIn(email.trim(),pw))}>{busy?'…':'Sign in'}</Btn>
+            <Btn variant="secondary" size="sm" disabled={busy||!email.trim()||pw.length<6}
+              onClick={()=>run(()=>api.signUp(email.trim(),pw))}>Create account</Btn>
+            <Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginLeft:'auto'}}
+              onClick={api.disconnect}>Disconnect</Btn>
+          </div>
+          <div style={{fontSize:10,color:'var(--text-subtle)'}}>Password must be 6+ characters for new accounts.</div>
+        </div>
+      )}
+
+      {(cloud.status==='synced'||cloud.status==='syncing'||cloud.status==='error'||cloud.status==='connecting') && cloud.user && (
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)'}}>
+            Signed in as <b style={{color:'var(--text-strong)'}}>{cloud.user}</b>
+            {cloud.last&&<> · last sync {cloud.last.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</>}
+          </div>
+          {cloud.status==='error'&&<div style={{fontSize:'var(--text-xs)',color:'var(--danger-500)',lineHeight:1.5}}>{cloud.err}</div>}
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <Btn variant="secondary" size="sm" disabled={busy||cloud.status==='syncing'}
+              iL={<Icon n="refresh" size={14} />} onClick={()=>run(api.syncNow)}>Sync now</Btn>
+            <Btn variant="ghost" size="sm" iL={<Icon n="log-out" size={14} />} onClick={api.signOut}>Sign out</Btn>
+            <Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginLeft:'auto'}}
+              onClick={api.disconnect}>Disconnect</Btn>
+          </div>
+        </div>
+      )}
+
+      {msg&&<div style={{fontSize:'var(--text-xs)',color:'var(--danger-500)',marginTop:8,lineHeight:1.5}}>{msg}</div>}
+    </div>
+  );
+}
+
+function SettingsSheet({ open, onClose, onReset, students, attendance, sessions, cloud, cloudApi, lang, setLanguage, t=s=>s }) {
   const [confirm,setConfirm]=useState(false);
-  useEffect(()=>{ if(!open) setConfirm(false); },[open]);
+  const fileRef=useRef(null);
+  const [restoreErr,setRestoreErr]=useState(null);
+  useEffect(()=>{ if(!open){ setConfirm(false); setRestoreErr(null); } },[open]);
   const recorded=Object.keys(attendance).filter(k=>Object.keys(attendance[k]).length>0).length;
+
+  const onFile=e=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{ try{ cloudApi.restore(JSON.parse(r.result)); setRestoreErr(null); }
+      catch(err){ setRestoreErr(err.message||'Could not read that file'); } };
+    r.readAsText(f);
+    e.target.value='';
+  };
 
   const exportCsv=()=>{
     const dates=Object.keys(attendance).filter(k=>Object.keys(attendance[k]).length>0).sort();
@@ -959,12 +1230,46 @@ function SettingsSheet({ open, onClose, onReset, students, attendance, sessions 
           </div>
         </div>
 
-        <Btn variant="secondary" full iL={<Icon n="download" size={16} />} onClick={exportCsv}>Export attendance (CSV)</Btn>
+        {/* Language */}
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <Icon n="globe" size={17} color="var(--navy-700)" />
+          <span style={{fontSize:'var(--text-sm)',fontWeight:700,color:'var(--text-strong)',flex:1}}>Language / ቋንቋ</span>
+          <div style={{display:'flex',background:'var(--surface-sunken)',borderRadius:'var(--radius-pill)',padding:3}}>
+            {[['en','English'],['am','አማርኛ']].map(([id,label])=>(
+              <button key={id} onClick={()=>setLanguage(id)} style={{
+                padding:'6px 14px',borderRadius:'var(--radius-pill)',border:'none',cursor:'pointer',
+                fontFamily:id==='am'?'var(--font-amharic, var(--font-sans))':'var(--font-sans)',
+                fontSize:'var(--text-xs)',fontWeight:700,
+                background:lang===id?'var(--navy-800)':'transparent',
+                color:lang===id?'var(--cream-50)':'var(--text-muted)',
+                transition:'background 150ms ease,color 150ms ease'}}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cloud sync */}
+        <CloudSection cloud={cloud} api={cloudApi} />
+
+        {/* Backup / restore / CSV */}
+        <div style={{borderTop:'1px solid var(--border-soft)',paddingTop:'var(--space-4)',display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{fontSize:'var(--text-sm)',fontWeight:700,color:'var(--text-strong)'}}>Your data</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <Btn variant="secondary" size="sm" iL={<Icon n="download" size={15} />} onClick={cloudApi.backup}>Backup</Btn>
+            <Btn variant="secondary" size="sm" iL={<Icon n="upload" size={15} />} onClick={()=>fileRef.current&&fileRef.current.click()}>Restore</Btn>
+          </div>
+          <input ref={fileRef} type="file" accept=".json,application/json" onChange={onFile} style={{display:'none'}} />
+          {restoreErr&&<div style={{fontSize:'var(--text-xs)',color:'var(--danger-500)'}}>{restoreErr}</div>}
+          <Btn variant="ghost" size="sm" iL={<Icon n="download" size={15} />} onClick={exportCsv}
+            style={{justifyContent:'flex-start',paddingLeft:0}}>Export attendance (CSV)</Btn>
+          <div style={{fontSize:10,color:'var(--text-subtle)',lineHeight:1.5}}>
+            Backup saves everything (students, classes, attendance, sessions) to a file — keep one before clearing your browser or switching phones. Restore replaces this device's data with the file.
+          </div>
+        </div>
 
         <div style={{borderTop:'1px solid var(--border-soft)',paddingTop:'var(--space-4)'}}>
           <div style={{fontSize:'var(--text-sm)',fontWeight:700,color:'var(--text-strong)'}}>Start fresh</div>
           <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:4,lineHeight:1.5}}>
-            Clears all attendance and sessions and restores the original 49-student roster. This cannot be undone — export first if you want a copy.
+            Clears all attendance and sessions and restores the original 49-student roster. This cannot be undone — download a Backup first. If team sync is on, the fresh state syncs to your whole team.
           </div>
           {!confirm ? (
             <Btn variant="ghost" size="sm" style={{color:'var(--danger-500)',marginTop:10,paddingLeft:0}}
@@ -983,7 +1288,7 @@ function SettingsSheet({ open, onClose, onReset, students, attendance, sessions 
 }
 
 /* ── STUDENTS ── */
-function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed }) {
+function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed, t=s=>s }) {
   const [q,setQ]=useState('');
   const [classFilter,setClassFilter]=useState('all');
   const [editId,setEditId]=useState(null);
@@ -1005,16 +1310,16 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
           <div>
-            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Students</h1>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>{t('Students')}</h1>
             <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{students.length} enrolled</div>
           </div>
-          <Btn variant="primary" size="sm" iL={<Icon n="user-plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>Add</Btn>
+          <Btn variant="primary" size="sm" iL={<Icon n="user-plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>{t('Add')}</Btn>
         </div>
         <div style={{position:'relative',marginBottom:'var(--space-3)'}}>
           <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',display:'flex',color:'var(--text-muted)'}}>
             <Icon n="search" size={17} />
           </span>
-          <input type="search" placeholder="Search students or parents…" value={q} onChange={e=>setQ(e.target.value)}
+          <input type="search" placeholder={t('Search students or parents…')} value={q} onChange={e=>setQ(e.target.value)}
             style={{width:'100%',padding:'10px 12px 10px 40px',borderRadius:'var(--radius-md)',
               border:'1.5px solid var(--border-default)',background:'var(--paper)',
               fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',color:'var(--text-strong)',outline:'none'}}
@@ -1079,7 +1384,10 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed
                           <Av name={s.name} size="sm" />
                           <div>
                             <div style={{fontWeight:700,color:'var(--text-strong)',fontSize:'var(--text-sm)',whiteSpace:'nowrap'}}>{s.name}</div>
-                            {streak>=3&&<Badge tone="coral" size="sm" style={{marginTop:3}}>Absent {streak}×</Badge>}
+                            <div style={{display:'flex',gap:4}}>
+                              {s.visitor&&<Badge tone="grape" size="sm" style={{marginTop:3}}>Visitor</Badge>}
+                              {streak>=3&&<Badge tone="coral" size="sm" style={{marginTop:3}}>Absent {streak}×</Badge>}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1147,6 +1455,7 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed
                 <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
                   <span style={{fontWeight:700,color:'var(--text-strong)',fontSize:'var(--text-md)'}}>{s.name}</span>
                   {sc && <Badge tone={sc.tone} size="sm">{className(sc)}</Badge>}
+                  {s.visitor && <Badge tone="grape" size="sm"><Icon n="sparkles" size={10} style={{marginRight:2}} />Visitor</Badge>}
                   {streak>=3 && <Badge tone="coral" size="sm"><Icon n="alert-circle" size={11} style={{marginRight:2}} />Absent {streak}×</Badge>}
                 </div>
                 <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:2}}>
@@ -1196,7 +1505,7 @@ function Students({ students, classes, attendance, onAdd, onEdit, onDelete, seed
 }
 
 function StudentForm({ open, student, classes=[], defaultClassId, onSave, onDelete, onClose }) {
-  const blank={name:'',classId:defaultClassId||'',age:'',parentName:'',parentPhone:'',notes:''};
+  const blank={name:'',classId:defaultClassId||'',age:'',parentName:'',parentPhone:'',notes:'',birthday:'',visitor:false};
   const [f,setF]=useState(blank);
   const [err,setErr]=useState({});
   const [confirm,setConfirm]=useState(false);
@@ -1204,7 +1513,7 @@ function StudentForm({ open, student, classes=[], defaultClassId, onSave, onDele
   useEffect(()=>{
     if(open){
       setF(student?{name:student.name,classId:student.classId||defaultClassId||'',age:student.age||'',parentName:student.parentName||'',
-        parentPhone:student.parentPhone||'',notes:student.notes||''}:blank);
+        parentPhone:student.parentPhone||'',notes:student.notes||'',birthday:student.birthday||'',visitor:!!student.visitor}:blank);
       setErr({}); setConfirm(false);
     }
   },[open,student]);
@@ -1213,11 +1522,14 @@ function StudentForm({ open, student, classes=[], defaultClassId, onSave, onDele
   const valid=()=>{
     const e={};
     if(!f.name.trim()) e.name='Name is required';
+    if(f.birthday&&!/^(\d{4}-)?\d{2}-\d{2}$/.test(f.birthday.trim())) e.birthday='Use MM-DD or YYYY-MM-DD';
     return e;
   };
   const go=()=>{
     const e=valid(); if(Object.keys(e).length){setErr(e);return;}
-    onSave({name:f.name.trim(),classId:f.classId,age:f.age?Number(f.age):'',parentName:f.parentName.trim(),parentPhone:f.parentPhone.trim(),notes:f.notes.trim()});
+    onSave({...(student||{}),name:f.name.trim(),classId:f.classId,age:f.age?Number(f.age):'',
+      parentName:f.parentName.trim(),parentPhone:f.parentPhone.trim(),notes:f.notes.trim(),
+      birthday:f.birthday.trim(),visitor:f.visitor});
   };
 
   return (
@@ -1245,10 +1557,22 @@ function StudentForm({ open, student, classes=[], defaultClassId, onSave, onDele
             </select>
           </div>
         )}
-        <Input label="Age" type="number" placeholder="e.g. 12" value={f.age} onChange={set('age')} />
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-3)'}}>
+          <Input label="Age" type="number" placeholder="e.g. 12" value={f.age} onChange={set('age')} />
+          <Input label="Birthday" placeholder="MM-DD or YYYY-MM-DD" value={f.birthday} onChange={set('birthday')} error={err.birthday} hint="e.g. 03-21" />
+        </div>
         <Input label="Parent / guardian name" placeholder="e.g. ዳዊት ሃሌሉያ" value={f.parentName} onChange={set('parentName')} />
         <Input label="Parent phone" type="tel" placeholder="+251 91 234 5678" value={f.parentPhone} onChange={set('parentPhone')} hint="For absence alerts. Include country code (+251…)" />
         <Input label="Notes" placeholder="Any important notes…" value={f.notes} onChange={set('notes')} multi rows={3} />
+        <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',padding:'10px 12px',
+          background:f.visitor?'var(--grape-100)':'var(--surface-sunken)',borderRadius:'var(--radius-md)'}}>
+          <input type="checkbox" checked={f.visitor} onChange={e=>setF(p=>({...p,visitor:e.target.checked}))}
+            style={{width:17,height:17,accentColor:'var(--grape-500)'}} />
+          <span style={{fontSize:'var(--text-sm)',fontWeight:600,color:f.visitor?'#5C4480':'var(--text-body)'}}>
+            First-time visitor
+          </span>
+          <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:'auto'}}>Untick to make a regular student</span>
+        </label>
       </div>
     </Modal>
   );
@@ -1279,6 +1603,13 @@ function StudentSheet({ open, student, cls, attendance, onClose, onEdit }) {
             <div style={{display:'flex',alignItems:'center',gap:6,marginTop:5,flexWrap:'wrap'}}>
               {cls && <Badge tone={cls.tone}>{className(cls)}</Badge>}
               {student.age && <Badge tone="neutral">Age {student.age}</Badge>}
+              {student.visitor && <Badge tone="grape"><Icon n="sparkles" size={11} style={{marginRight:3}} />Visitor</Badge>}
+              {student.birthday && nextBirthdayInfo(student.birthday) && (
+                <Badge tone="coral"><Icon n="cake" size={11} style={{marginRight:3}} />
+                  {(()=>{const b=nextBirthdayInfo(student.birthday);
+                    return b.days===0?'Birthday today!':fmtShort(dk(b.date))+(b.turning?` · ${b.turning}`:'');})()}
+                </Badge>
+              )}
               {streak>=3 && <Badge tone="coral">Absent {streak}× in a row</Badge>}
             </div>
           </div>
@@ -1355,8 +1686,11 @@ function StudentSheet({ open, student, cls, attendance, onClose, onEdit }) {
 }
 
 /* ── ATTENDANCE ── */
-function Attendance({ students, classes, attendance, activeClassId, setActiveClassId, onSave, notify }) {
+function Attendance({ students, classes, attendance, activeClassId, setActiveClassId, onSave, notify, onAddVisitor, t=s=>s }) {
   const isDesk=useMedia('(min-width:1024px)');
+  const [showVisitor,setShowVisitor]=useState(false);
+  const [visName,setVisName]=useState('');
+  const [visPhone,setVisPhone]=useState('');
   const sundays=getSundays(14);
   const [selDate,setSelDate]=useState(dk(sundays[0]));
   const [marks,setMarks]=useState({});
@@ -1400,7 +1734,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
         {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
           <div>
-            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Attendance</h1>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>{t('Attendance')}</h1>
             <button onClick={()=>setShowPicker(p=>!p)} style={{display:'flex',alignItems:'center',gap:5,
               background:'none',border:'none',cursor:'pointer',fontFamily:'var(--font-sans)',
               fontSize:'var(--text-sm)',color:'var(--navy-700)',fontWeight:600,padding:'3px 0'}}>
@@ -1409,7 +1743,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
           </div>
           <Btn variant={saved?'leaf':'primary'} size="sm"
             iL={<Icon n={saved?'check':'save'} size={15} />} onClick={doSave}>
-            {saved?'Saved':'Save'}
+            {t(saved?'Saved':'Save')}
           </Btn>
         </div>
 
@@ -1464,22 +1798,22 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
             <div style={{display:'flex',gap:16}}>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--leaf-500)',lineHeight:1}}>{present}</div>
-                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Present</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{t('Present')}</div>
               </div>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--coral-500)',lineHeight:1}}>{absent}</div>
-                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Absent</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{t('Absent')}</div>
               </div>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-subtle)',lineHeight:1}}>{classStudents.length-present-absent}</div>
-                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Unmarked</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{t('Unmarked')}</div>
               </div>
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontSize:'var(--text-3xl)',fontWeight:800,color:'var(--navy-800)',lineHeight:1}}>
                 {classStudents.length?Math.round(present/classStudents.length*100):0}%
               </div>
-              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Attendance rate</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{t('Attendance rate')}</div>
             </div>
           </div>
           <div style={{height:8,borderRadius:'var(--radius-pill)',background:'var(--surface-sunken)',overflow:'hidden'}}>
@@ -1487,9 +1821,36 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
               background:'var(--leaf-500)',borderRadius:'var(--radius-pill)',transition:'width 300ms ease'}} />
           </div>
           <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}>
-            <Btn variant="ghost" size="sm" iL={<Icon n="check-check" size={14} />} onClick={()=>markAll(true)}>All present</Btn>
-            <Btn variant="ghost" size="sm" iL={<Icon n="x" size={14} />} onClick={()=>markAll(false)}>All absent</Btn>
+            <Btn variant="ghost" size="sm" iL={<Icon n="check-check" size={14} />} onClick={()=>markAll(true)}>{t('All present')}</Btn>
+            <Btn variant="ghost" size="sm" iL={<Icon n="x" size={14} />} onClick={()=>markAll(false)}>{t('All absent')}</Btn>
+            <Btn variant="ghost" size="sm" iL={<Icon n="sparkles" size={14} />} style={{color:'var(--grape-500)'}}
+              onClick={()=>setShowVisitor(v=>!v)}>{t('Add visitor')}</Btn>
           </div>
+
+          {/* First-time visitor quick add — joins this class & is marked present for the selected Sunday */}
+          {showVisitor && (
+            <div style={{marginTop:12,padding:'var(--space-4)',background:'var(--grape-100)',
+              borderRadius:'var(--radius-md)',animation:'fadeUp 200ms ease'}}>
+              <div style={{fontSize:'var(--text-sm)',fontWeight:700,color:'#5C4480',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+                <Icon n="sparkles" size={14} /> {t('Add visitor')} — {fmtShort(selDate)}
+              </div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <input value={visName} onChange={e=>setVisName(e.target.value)} placeholder="Child's name"
+                  style={{flex:'2 1 160px',padding:'9px 12px',borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
+                    background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-sm)',outline:'none'}} />
+                <input value={visPhone} onChange={e=>setVisPhone(e.target.value)} placeholder="Parent phone (optional)" type="tel"
+                  style={{flex:'1 1 130px',padding:'9px 12px',borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
+                    background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-sm)',outline:'none'}} />
+                <Btn variant="primary" size="sm" disabled={!visName.trim()} onClick={()=>{
+                  onAddVisitor(visName.trim(),visPhone.trim(),cls.id,selDate);
+                  setVisName(''); setVisPhone(''); setShowVisitor(false);
+                }}>{t('Add')}</Btn>
+              </div>
+              <div style={{fontSize:11,color:'#5C4480',marginTop:8,opacity:.8}}>
+                They join this class flagged as a visitor and are marked present right away. Promote them to a regular student later by editing them in {t('Students')}.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1510,7 +1871,10 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
               animationDelay:`${Math.min(idx*18,300)}ms`}}>
               <Av name={s.name} size="md" />
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:600,color:'var(--text-strong)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+                <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+                  <span style={{fontWeight:600,color:'var(--text-strong)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</span>
+                  {s.visitor&&<Badge tone="grape" size="sm"><Icon n="sparkles" size={10} style={{marginRight:2}} />{t('Visitor')}</Badge>}
+                </div>
                 {s.age&&<div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)'}}>Age {s.age}</div>}
               </div>
               <button onClick={()=>toggle(s.id)} style={{
@@ -1523,7 +1887,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
                 <span key={isPresent?'p':isAbsent?'a':'u'} style={{display:'inline-flex',animation:'popIn 280ms cubic-bezier(0.34,1.56,0.64,1)'}}>
                   <Icon n={isPresent?'check':isAbsent?'x':'circle'} size={15} />
                 </span>
-                {isPresent?'Present':isAbsent?'Absent':'Mark'}
+                {t(isPresent?'Present':isAbsent?'Absent':'Mark')}
               </button>
             </div>
           );
@@ -1535,7 +1899,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
 }
 
 /* ── SESSIONS ── */
-function Sessions({ sessions, onAdd, onEdit, onDelete }) {
+function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const isDesk=useMedia('(min-width:1024px)');
@@ -1547,7 +1911,7 @@ function Sessions({ sessions, onAdd, onEdit, onDelete }) {
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)'}}>
           <div>
-            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Sessions</h1>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>{t('Sessions')}</h1>
             <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{sessions.length} lesson{sessions.length!==1?'s':''} planned</div>
           </div>
           <Btn variant="primary" size="sm" iL={<Icon n="plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>Plan</Btn>
@@ -1667,7 +2031,7 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
 }
 
 /* ── CLASSES ── */
-function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpenClass }) {
+function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpenClass, t=s=>s }) {
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const isDesk=useMedia('(min-width:1024px)');
@@ -1682,10 +2046,10 @@ function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpe
       <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
-            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>Classes</h1>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>{t('Classes')}</h1>
             <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{classes.length} age-grouped {classes.length===1?'class':'classes'}</div>
           </div>
-          <Btn variant="primary" size="sm" iL={<Icon n="plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>New class</Btn>
+          <Btn variant="primary" size="sm" iL={<Icon n="plus" size={15} />} onClick={()=>{setEditId(null);setShowForm(true);}}>{t('New class')}</Btn>
         </div>
       </div>
       <div style={{padding:'0 var(--space-4)'}}>
@@ -1788,6 +2152,147 @@ function ClassForm({ open, klass, studentCount=0, onSave, onDelete, onClose }) {
   );
 }
 
+/* ── REPORTS ── */
+function Reports({ students, classes, attendance, t=s=>s }) {
+  const isDesk=useMedia('(min-width:1024px)');
+  const [classFilter,setClassFilter]=useState('all');
+  const [range,setRange]=useState(12);
+  const recorded=Object.keys(attendance).filter(k=>Object.keys(attendance[k]).length>0).sort();
+  const dates=range==='all'?recorded:recorded.slice(-range);
+  const roster=students.filter(s=>classFilter==='all'||s.classId===classFilter).sort(byName);
+  const clsOf=id=>classes.find(c=>c.id===id);
+  const rateFor=s=>{
+    const m=dates.filter(d=>s.id in (attendance[d]||{}));
+    if(!m.length) return null;
+    return Math.round(m.filter(d=>attendance[d][s.id]===true).length/m.length*100);
+  };
+  const colTotals=dates.map(d=>{
+    const r=attendance[d]||{};
+    const inCol=roster.filter(s=>s.id in r);
+    return { p:inCol.filter(s=>r[s.id]===true).length, n:inCol.length };
+  });
+  const rated=colTotals.filter(c=>c.n>0);
+  const avg=rated.length?Math.round(rated.reduce((a,c)=>a+c.p/c.n,0)/rated.length*100):0;
+  let best=null; colTotals.forEach((c,i)=>{ if(c.n>0){ const r=c.p/c.n; if(!best||r>best.r) best={r,i}; } });
+
+  return (
+    <div className="page" style={{maxWidth:isDesk?1240:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':0}}>
+      <div style={{padding:'var(--space-5) var(--space-4) var(--space-3)'}} className="no-print">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'var(--space-4)',gap:10,flexWrap:'wrap'}}>
+          <div>
+            <h1 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.02em'}}>{t('Reports')}</h1>
+            <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)'}}>{recorded.length} Sundays recorded</div>
+          </div>
+          <Btn variant="primary" size="sm" iL={<Icon n="printer" size={15} />} onClick={()=>window.print()}>Print</Btn>
+        </div>
+
+        {/* Filters */}
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          {[{id:'all',label:'All classes',tone:null},...classes.map(c=>({id:c.id,label:className(c),tone:c.tone}))].map(f=>{
+            const on=classFilter===f.id;
+            return <button key={f.id} onClick={()=>setClassFilter(f.id)} style={{
+              display:'flex',alignItems:'center',gap:7,cursor:'pointer',padding:'6px 12px',
+              borderRadius:'var(--radius-pill)',fontFamily:'var(--font-sans)',fontSize:'var(--text-xs)',
+              border:on?'1.5px solid var(--navy-800)':'1px solid var(--border-default)',
+              background:on?'var(--navy-800)':'var(--surface-card)',
+              color:on?'var(--cream-50)':'var(--text-muted)',fontWeight:on?700:500}}>
+              {f.tone&&<span style={{width:8,height:8,borderRadius:'50%',background:`var(--${f.tone}-500)`}} />}
+              {f.label}
+            </button>;
+          })}
+          <span style={{marginLeft:'auto'}}>
+            <select value={range} onChange={e=>setRange(e.target.value==='all'?'all':Number(e.target.value))}
+              style={{padding:'7px 10px',borderRadius:'var(--radius-md)',border:'1px solid var(--border-default)',
+                background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-xs)',color:'var(--text-body)',outline:'none'}}>
+              <option value={8}>Last 8 Sundays</option>
+              <option value={12}>Last 12 Sundays</option>
+              <option value="all">Whole term</option>
+            </select>
+          </span>
+        </div>
+
+        {/* Summary chips */}
+        {dates.length>0 && (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-3)',marginTop:'var(--space-4)'}}>
+            {[[avg+'%','Average attendance'],[dates.length,'Sundays in range'],
+              [best?fmtShort(dates[best.i]):'—','Best Sunday'+(best?` (${Math.round(best.r*100)}%)`:'')]].map(([v,l])=>(
+              <div key={l} style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+                borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)'}}>
+                <div style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--navy-800)',lineHeight:1}}>{v}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:5}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Register grid */}
+      <div style={{padding:'0 var(--space-4)'}} className="print-area">
+        {dates.length===0 ? (
+          <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)'}} className="no-print">
+            No attendance recorded yet — save a Sunday first and the register will appear here.
+          </div>
+        ) : (
+          <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
+            borderRadius:'var(--radius-lg)',boxShadow:'var(--shadow-xs)',overflowX:'auto'}}>
+            <div style={{padding:'14px 16px 0',fontWeight:800,color:'var(--text-strong)',fontSize:'var(--text-md)'}}>
+              FECMY Children Ministry — {t('Attendance')} register
+              <span style={{fontWeight:500,color:'var(--text-muted)',fontSize:'var(--text-xs)',marginLeft:8}}>
+                {classFilter==='all'?'All classes':className(clsOf(classFilter)||{})} · {fmtShort(dates[0])} – {fmtShort(dates[dates.length-1])}
+              </span>
+            </div>
+            <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'var(--font-sans)',marginTop:10}}>
+              <thead>
+                <tr style={{background:'var(--surface-sunken)'}}>
+                  <th style={{textAlign:'left',padding:'9px 14px',fontSize:10,fontWeight:700,color:'var(--text-muted)',
+                    letterSpacing:'.05em',textTransform:'uppercase',position:'sticky',left:0,background:'var(--surface-sunken)'}}>{t('Students')}</th>
+                  {dates.map(d=>(
+                    <th key={d} style={{padding:'9px 5px',fontSize:9,fontWeight:700,color:'var(--text-muted)',whiteSpace:'nowrap'}}>{fmtShort(d)}</th>
+                  ))}
+                  <th style={{padding:'9px 12px',fontSize:10,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',textTransform:'uppercase'}}>%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map(s=>{
+                  const r=rateFor(s);
+                  return (
+                    <tr key={s.id} style={{borderTop:'1px solid var(--border-soft)'}}>
+                      <td style={{padding:'7px 14px',fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)',
+                        whiteSpace:'nowrap',position:'sticky',left:0,background:'var(--surface-card)'}}>
+                        {s.name}{s.visitor&&<span style={{marginLeft:6,fontSize:9,fontWeight:700,color:'var(--grape-500)'}}>{t('Visitor').toUpperCase()}</span>}
+                      </td>
+                      {dates.map(d=>{
+                        const v=(attendance[d]||{})[s.id];
+                        return <td key={d} style={{textAlign:'center',padding:'7px 5px'}}>
+                          {v===true ? <span style={{display:'inline-flex',width:17,height:17,borderRadius:'50%',background:'var(--leaf-500)',alignItems:'center',justifyContent:'center'}}><Icon n="check" size={10} color="#fff" /></span>
+                          : v===false ? <span style={{display:'inline-flex',width:17,height:17,borderRadius:'50%',background:'var(--coral-100)',alignItems:'center',justifyContent:'center'}}><Icon n="x" size={9} color="#B23A2C" /></span>
+                          : <span style={{display:'inline-block',width:17,height:17,borderRadius:'50%',background:'var(--ink-100)'}} />}
+                        </td>;
+                      })}
+                      <td style={{textAlign:'center',padding:'7px 12px',fontSize:'var(--text-xs)',fontWeight:800,
+                        color:r===null?'var(--text-subtle)':r>=80?'var(--leaf-500)':r>=60?'#286179':'#B23A2C'}}>{r===null?'—':r+'%'}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{borderTop:'2px solid var(--border-default)',background:'var(--surface-sunken)'}}>
+                  <td style={{padding:'9px 14px',fontSize:'var(--text-xs)',fontWeight:800,color:'var(--text-strong)',
+                    position:'sticky',left:0,background:'var(--surface-sunken)'}}>{t('Checked in')}</td>
+                  {colTotals.map((c,i)=>(
+                    <td key={i} style={{textAlign:'center',padding:'9px 5px',fontSize:10,fontWeight:800,
+                      color:'var(--text-strong)',whiteSpace:'nowrap'}}>{c.n?`${c.p}/${c.n}`:'—'}</td>
+                  ))}
+                  <td style={{textAlign:'center',padding:'9px 12px',fontSize:'var(--text-xs)',fontWeight:800,color:'var(--navy-800)'}}>{avg}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div style={{height:12}} />
+      </div>
+    </div>
+  );
+}
+
 /* ── NAV ── */
 const TABS=[
   {id:'dashboard',i:'layout-dashboard',l:'Dashboard'},
@@ -1795,9 +2300,10 @@ const TABS=[
   {id:'attendance',i:'check-circle-2',l:'Attendance'},
   {id:'students',i:'users',l:'Students'},
   {id:'sessions',i:'book-open',l:'Sessions'},
+  {id:'reports',i:'bar-chart',l:'Reports'},
 ];
 
-function Sidebar({ tab, onTab, count }) {
+function Sidebar({ tab, onTab, count, t=s=>s }) {
   return (
     <div className="desktop-sidebar">
       <div style={{display:'flex',alignItems:'center',gap:12,paddingBottom:'var(--space-4)',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
@@ -1822,7 +2328,7 @@ function Sidebar({ tab, onTab, count }) {
             onMouseEnter={e=>{if(!on){e.currentTarget.style.background='rgba(255,255,255,.08)';e.currentTarget.style.color='var(--cream-50)';}}}
             onMouseLeave={e=>{if(!on){e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--navy-300)';}}}
           >
-            <Icon n={i} size={19} />{l}
+            <Icon n={i} size={19} />{t(l)}
           </button>;
         })}
       </nav>
@@ -1844,10 +2350,18 @@ function App() {
   const [activeClassId,setActiveClassId]=useState(()=>{
     const cs=load(SK.classes,null)??INITIAL_CLASSES; return cs[0]?cs[0].id:null;
   });
+  const [lang,setLang]=useState(()=>load(LANG_KEY,'en'));
+  const t=s=>tr(lang,s);
+  const setLanguage=l=>{ setLang(l); save(LANG_KEY,l); };
 
-  const saveS=v=>{setStudents(v);save(SK.children,v);};
-  const saveSess=v=>{setSessions(v);save(SK.sessions,v);};
-  const saveCls=v=>{setClasses(v);save(SK.classes,v);};
+  // Latest data snapshot for the sync engine (state is async; this is not)
+  const dataRef=useRef(null);
+  if(dataRef.current===null) dataRef.current={students,classes,sessions,attendance};
+
+  const saveS=v=>{setStudents(v);save(SK.children,v);dataRef.current={...dataRef.current,students:v};schedulePush();};
+  const saveSess=v=>{setSessions(v);save(SK.sessions,v);dataRef.current={...dataRef.current,sessions:v};schedulePush();};
+  const saveCls=v=>{setClasses(v);save(SK.classes,v);dataRef.current={...dataRef.current,classes:v};schedulePush();};
+  const saveAtt=v=>{setAttendance(v);save(SK.attendance,v);dataRef.current={...dataRef.current,attendance:v};schedulePush();};
 
   // Toast notifications
   const [toast,setToast]=useState(null);
@@ -1858,10 +2372,174 @@ function App() {
     return()=>clearTimeout(t);
   },[toast]);
 
+  /* ── Cloud sync (Supabase) ───────────────────────────────
+     status: off → not configured · signedout → configured, needs login
+             syncing · synced · error                              */
+  const sbRef=useRef(null);
+  const dirtyRef=useRef(false);
+  const pushTimer=useRef(null);
+  const [cloud,setCloud]=useState(()=>{
+    const c=load(CLOUD_CFG_KEY,null);
+    return { cfg:c, user:null, status:c?'connecting':'off', last:null, err:null };
+  });
+  const cloudRef=useRef(cloud);
+  useEffect(()=>{ cloudRef.current=cloud; },[cloud]);
+
+  const getClient=()=>{
+    if(sbRef.current) return sbRef.current;
+    const c=load(CLOUD_CFG_KEY,null);
+    if(!c||!window.supabase) return null;
+    try{ sbRef.current=window.supabase.createClient(c.url,c.key); }catch{ return null; }
+    return sbRef.current;
+  };
+
+  async function pushAllNow(){
+    const cl=getClient(); if(!cl) return;
+    const d=dataRef.current, now=new Date().toISOString();
+    const up=(t,rows)=>cl.from(t).upsert(rows);
+    await up('students',d.students.map(s=>({id:s.id,data:s,updated_at:now})));
+    await up('classes',d.classes.map(c=>({id:c.id,data:c,updated_at:now})));
+    await up('sessions',d.sessions.map(s=>({id:s.id,data:s,updated_at:now})));
+    const dates=Object.keys(d.attendance);
+    if(dates.length) await up('attendance',dates.map(ds=>({date:ds,marks:d.attendance[ds],updated_at:now})));
+    // remove rows deleted locally
+    const prune=async(t,ids)=>{ if(ids.length) await cl.from(t).delete().not('id','in',`(${ids.join(',')})`);
+      else await cl.from(t).delete().neq('id',''); };
+    await prune('students',d.students.map(s=>s.id));
+    await prune('classes',d.classes.map(c=>c.id));
+    await prune('sessions',d.sessions.map(s=>s.id));
+    dirtyRef.current=false;
+  }
+
+  function schedulePush(){
+    const c=cloudRef.current;
+    if(!c.user) return;
+    dirtyRef.current=true;
+    clearTimeout(pushTimer.current);
+    pushTimer.current=setTimeout(async()=>{
+      try{
+        setCloud(p=>({...p,status:'syncing'}));
+        await pushAllNow();
+        setCloud(p=>({...p,status:'synced',last:new Date(),err:null}));
+      }catch(e){ setCloud(p=>({...p,status:'error',err:e.message||String(e)})); }
+    },1500);
+  }
+
+  function adoptCloud(st,csx,ssx,att){
+    const studs=st.map(r=>r.data), cls=csx.map(r=>r.data), sess=ssx.map(r=>r.data);
+    const at={}; att.forEach(r=>{ at[r.date]=r.marks; });
+    dataRef.current={students:studs,classes:cls,sessions:sess,attendance:at};
+    setStudents(studs); save(SK.children,studs);
+    setClasses(cls); save(SK.classes,cls);
+    setSessions(sess); save(SK.sessions,sess);
+    setAttendance(at); save(SK.attendance,at);
+    if(cls.length && !cls.find(c=>c.id===activeClassId)) setActiveClassId(cls[0].id);
+  }
+
+  async function fullSync(){
+    const cl=getClient(); if(!cl) return;
+    try{
+      setCloud(p=>({...p,status:'syncing'}));
+      const [st,csx,ssx,att]=await Promise.all([
+        cl.from('students').select('*'), cl.from('classes').select('*'),
+        cl.from('sessions').select('*'), cl.from('attendance').select('*'),
+      ]);
+      for(const r of [st,csx,ssx,att]) if(r.error) throw r.error;
+      if(st.data.length>0||csx.data.length>0){
+        adoptCloud(st.data,csx.data,ssx.data,att.data);   // cloud is the team's truth
+      } else {
+        await pushAllNow();                                // first device seeds the cloud
+      }
+      setCloud(p=>({...p,status:'synced',last:new Date(),err:null}));
+    }catch(e){ setCloud(p=>({...p,status:'error',err:e.message||String(e)})); }
+  }
+
+  async function pullLatest(){
+    const cl=getClient(); if(!cl||dirtyRef.current) return;
+    try{
+      const [st,csx,ssx,att]=await Promise.all([
+        cl.from('students').select('*'), cl.from('classes').select('*'),
+        cl.from('sessions').select('*'), cl.from('attendance').select('*'),
+      ]);
+      for(const r of [st,csx,ssx,att]) if(r.error) return;
+      if(st.data.length===0&&csx.data.length===0) return;
+      const incoming={students:st.data.map(r=>r.data),classes:csx.data.map(r=>r.data),
+        sessions:ssx.data.map(r=>r.data),attendance:Object.fromEntries(att.data.map(r=>[r.date,r.marks]))};
+      if(JSON.stringify(incoming)!==JSON.stringify(dataRef.current)){
+        adoptCloud(st.data,csx.data,ssx.data,att.data);
+        setCloud(p=>({...p,last:new Date()}));
+      }
+    }catch{}
+  }
+
+  // Restore session on load; poll for team changes while signed in
+  useEffect(()=>{
+    const cl=getClient();
+    if(!cl){ if(cloud.cfg) setCloud(p=>({...p,status:'error',err:'Sync library not loaded — check internet'})); return; }
+    cl.auth.getSession().then(({data})=>{
+      if(data&&data.session){ setCloud(p=>({...p,user:data.session.user.email,status:'syncing'})); fullSync(); }
+      else setCloud(p=>({...p,status:'signedout'}));
+    }).catch(()=>setCloud(p=>({...p,status:'signedout'})));
+  },[]);
+  useEffect(()=>{
+    if(!cloud.user) return;
+    const iv=setInterval(pullLatest,45000);
+    const onVis=()=>{ if(!document.hidden) pullLatest(); };
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{ clearInterval(iv); document.removeEventListener('visibilitychange',onVis); };
+  },[cloud.user]);
+
+  const cloudApi={
+    connect:(url,key)=>{
+      if(!window.supabase) throw new Error('Sync library not loaded — check your internet and reload');
+      save(CLOUD_CFG_KEY,{url:url.trim().replace(/\/+$/,''),key:key.trim()});
+      sbRef.current=null;
+      if(!getClient()) throw new Error('Could not create client — check the URL and key');
+      setCloud({cfg:load(CLOUD_CFG_KEY,null),user:null,status:'signedout',last:null,err:null});
+    },
+    signIn:async(email,pw)=>{
+      const cl=getClient(); if(!cl) throw new Error('Not connected');
+      const {error}=await cl.auth.signInWithPassword({email,password:pw});
+      if(error) throw error;
+      setCloud(p=>({...p,user:email,status:'syncing'}));
+      await fullSync();
+      notify('Signed in — data synced');
+    },
+    signUp:async(email,pw)=>{
+      const cl=getClient(); if(!cl) throw new Error('Not connected');
+      const {error}=await cl.auth.signUp({email,password:pw});
+      if(error) throw error;
+      notify('Account created — if sign-in fails, confirm the email first');
+    },
+    signOut:()=>{ try{getClient()?.auth.signOut();}catch{} setCloud(p=>({...p,user:null,status:'signedout'})); },
+    disconnect:()=>{ try{getClient()?.auth.signOut();}catch{} try{localStorage.removeItem(CLOUD_CFG_KEY);}catch{}
+      sbRef.current=null; setCloud({cfg:null,user:null,status:'off',last:null,err:null}); },
+    syncNow:fullSync,
+    backup:()=>{
+      const d=dataRef.current;
+      const payload={app:'fecmy-children-ministry',version:1,exportedAt:new Date().toISOString(),
+        students:d.students,classes:d.classes,sessions:d.sessions,attendance:d.attendance};
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='fecmy-backup-'+dk(new Date())+'.json'; a.click();
+      notify('Backup downloaded');
+    },
+    restore:(data)=>{
+      if(!data||!Array.isArray(data.students)||!Array.isArray(data.classes)) throw new Error('Not a valid FECMY backup file');
+      saveS(data.students); saveCls(data.classes);
+      saveSess(Array.isArray(data.sessions)?data.sessions:[]);
+      saveAtt(data.attendance&&typeof data.attendance==='object'?data.attendance:{});
+      if(data.classes[0]) setActiveClassId(data.classes[0].id);
+      notify('Backup restored');
+    },
+  };
+
   const resetAll=()=>{
     [SK.children,SK.attendance,SK.sessions,SK.classes].forEach(k=>{ try{localStorage.removeItem(k);}catch{} });
     setStudents(INITIAL_STUDENTS); setAttendance({}); setSessions([]); setClasses(INITIAL_CLASSES);
+    dataRef.current={students:INITIAL_STUDENTS,classes:INITIAL_CLASSES,sessions:[],attendance:{}};
     setActiveClassId(INITIAL_CLASSES[0].id); setTab('dashboard');
+    schedulePush();
   };
 
   const openClass=(cid)=>{ setActiveClassId(cid); setTab('attendance'); };
@@ -1870,10 +2548,21 @@ function App() {
   const [studentSeed,setStudentSeed]=useState(null);
   const doSearch=q=>{ setStudentSeed({q,n:Date.now()}); setTab('students'); };
 
+  // Visitor quick-add: create flagged student + mark present on that Sunday
+  const addVisitor=(name,phone,classId,date)=>{
+    const v={id:uid(),name,classId,age:'',parentName:'',parentPhone:phone||'',notes:'',
+      visitor:true,firstVisit:date,addedAt:dk(new Date())};
+    saveS([...dataRef.current.students,v]);
+    saveAtt({...dataRef.current.attendance,[date]:{...(dataRef.current.attendance[date]||{}),[v.id]:true}});
+    notify(t('Visitor')+' · '+name+' ✓');
+    return v.id;
+  };
+
   const screens={
     dashboard:<Dashboard students={students} attendance={attendance} sessions={sessions} classes={classes}
-      onNav={setTab} onReset={resetAll} onOpenClass={openClass} onSearch={doSearch} />,
-    classes:<Classes classes={classes} students={students} attendance={attendance}
+      onNav={setTab} onReset={resetAll} onOpenClass={openClass} onSearch={doSearch}
+      cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t} />,
+    classes:<Classes classes={classes} students={students} attendance={attendance} t={t}
       onAdd={d=>{saveCls([...classes,{...d,id:uid()}]);notify('Class created');}}
       onEdit={d=>{saveCls(classes.map(c=>c.id===d.id?d:c));notify('Class updated');}}
       onDelete={id=>{ saveCls(classes.filter(c=>c.id!==id));
@@ -1882,18 +2571,20 @@ function App() {
         if(fallback) saveS(students.map(s=>s.classId===id?{...s,classId:fallback}:s));
         notify('Class deleted'); }}
       onOpenClass={openClass} />,
-    students:<Students students={students} classes={classes} attendance={attendance} seed={studentSeed}
+    students:<Students students={students} classes={classes} attendance={attendance} seed={studentSeed} t={t}
       onAdd={d=>{saveS([...students,{...d,id:uid(),addedAt:dk(new Date())}]);notify('Student added');}}
       onEdit={d=>{saveS(students.map(s=>s.id===d.id?d:s));notify('Student updated');}}
       onDelete={id=>{saveS(students.filter(s=>s.id!==id));notify('Student removed');}} />,
-    attendance:<Attendance students={students} classes={classes} attendance={attendance}
-      activeClassId={activeClassId} setActiveClassId={setActiveClassId} notify={notify} onSave={(ds,marks)=>{
-        const n={...attendance,[ds]:{...(attendance[ds]||{}),...marks}};setAttendance(n);save(SK.attendance,n);
+    attendance:<Attendance students={students} classes={classes} attendance={attendance} t={t}
+      activeClassId={activeClassId} setActiveClassId={setActiveClassId} notify={notify}
+      onAddVisitor={addVisitor} onSave={(ds,marks)=>{
+        saveAtt({...attendance,[ds]:{...(attendance[ds]||{}),...marks}});
       }} />,
-    sessions:<Sessions sessions={sessions}
+    sessions:<Sessions sessions={sessions} t={t}
       onAdd={d=>{saveSess([...sessions,{...d,id:uid()}]);notify('Session planned');}}
       onEdit={d=>{saveSess(sessions.map(s=>s.id===d.id?d:s));notify('Session updated');}}
       onDelete={id=>{saveSess(sessions.filter(s=>s.id!==id));notify('Session removed');}} />,
+    reports:<Reports students={students} classes={classes} attendance={attendance} t={t} />,
   };
 
   return (
@@ -1907,7 +2598,7 @@ function App() {
               {tab===id && <span style={{position:'absolute',top:0,left:'50%',marginLeft:-12,width:24,height:3,
                 borderRadius:'0 0 3px 3px',background:'var(--navy-800)',animation:'navDot 220ms cubic-bezier(0.22,1,0.36,1)'}} />}
               <Icon n={i} size={22} color={tab===id?'var(--navy-800)':'var(--ink-400)'} />
-              {l}
+              {t(l)}
             </button>
           ))}
         </nav>
@@ -1915,7 +2606,7 @@ function App() {
 
       {/* Desktop */}
       <div className="desktop-shell" style={{display:'none'}}>
-        <Sidebar tab={tab} onTab={setTab} count={students.length} />
+        <Sidebar tab={tab} onTab={setTab} count={students.length} t={t} />
         <main style={{overflowY:'auto',minWidth:0,background:'var(--surface-app)'}}>
           <div key={tab} className="screen-enter">{screens[tab]}</div>
         </main>
