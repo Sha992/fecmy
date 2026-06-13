@@ -138,8 +138,8 @@ const LANG_KEY='fecmy_lang';
    once your teachers have accounts.)
    ════════════════════════════════════════════════════════════════ */
 const DEFAULT_CLOUD = {
-  url: '',   // e.g. 'https://abcdefgh.supabase.co'
-  key: '',   // the long 'anon public' key
+  url: 'https://pzqpwkrygreqbrngzeuq.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6cXB3a3J5Z3JlcWJybmd6ZXVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjAxMjAsImV4cCI6MjA5NjgzNjEyMH0.m2lhVzKVJ8ZRsyWeObzCcD7UUidMXU08Qc7loDYttBM',
 };
 
 // Invite links: opening <site-url>#join=<token> stores the project
@@ -850,7 +850,7 @@ function SearchBox({ onSubmit, width=250 }) {
 
 /* ── DASHBOARD ── */
 function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset, onOpenClass, onSearch,
-  cloud, cloudApi, lang, setLanguage, t=s=>s }) {
+  cloud, cloudApi, lang, setLanguage, t=s=>s, teacher='', setTeacher }) {
   const [showSettings, setShowSettings] = useState(false);
   const realToday = dk(new Date());           // the actual calendar date
   const today = dk(getSundays(1)[0]);          // the class day (this/most-recent Sunday)
@@ -997,7 +997,8 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
 
       <SettingsSheet open={showSettings} onClose={()=>setShowSettings(false)} onReset={onReset}
         students={students} attendance={attendance} sessions={sessions}
-        cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t} />
+        cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t}
+        teacher={teacher} setTeacher={setTeacher} />
     </div>
   );
 
@@ -1090,7 +1091,8 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
 
       <SettingsSheet open={showSettings} onClose={()=>setShowSettings(false)} onReset={onReset}
         students={students} attendance={attendance} sessions={sessions}
-        cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t} />
+        cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t}
+        teacher={teacher} setTeacher={setTeacher} />
     </div>
   );
 }
@@ -1207,7 +1209,7 @@ function CloudSection({ cloud, api }) {
   );
 }
 
-function SettingsSheet({ open, onClose, onReset, students, attendance, sessions, cloud, cloudApi, lang, setLanguage, t=s=>s }) {
+function SettingsSheet({ open, onClose, onReset, students, attendance, sessions, cloud, cloudApi, lang, setLanguage, t=s=>s, teacher='', setTeacher }) {
   const [confirm,setConfirm]=useState(false);
   const fileRef=useRef(null);
   const [restoreErr,setRestoreErr]=useState(null);
@@ -1250,6 +1252,19 @@ function SettingsSheet({ open, onClose, onReset, students, attendance, sessions,
                 <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{l}</div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Teacher name — stamps lesson plans with who planned/edited */}
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <Av name={teacher||'?'} size="sm" />
+          <div style={{flex:1,minWidth:0}}>
+            <input value={teacher} onChange={e=>setTeacher&&setTeacher(e.target.value)} placeholder="Your name (e.g. Shalom)"
+              style={{width:'100%',padding:'9px 12px',borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
+                background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-sm)',color:'var(--text-strong)',outline:'none'}}
+              onFocus={e=>e.target.style.borderColor='var(--navy-600)'}
+              onBlur={e=>e.target.style.borderColor='var(--border-default)'} />
+            <div style={{fontSize:10,color:'var(--text-subtle)',marginTop:4}}>Shown on lesson plans you create or edit, so the team knows who added what.</div>
           </div>
         </div>
 
@@ -1922,12 +1937,100 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
 }
 
 /* ── SESSIONS ── */
+/* Renders plain text the way it was typed: line breaks kept, plus light
+   formatting — "# Heading", "- bullet", "1. numbered", "**bold**", and
+   short "Label:" lines become subheads. Planning notes, not a word processor. */
+function RichText({ text, size='var(--text-sm)' }) {
+  const bold=(line,k)=>line.split(/(\*\*[^*]+\*\*)/g).map((seg,i)=>
+    /^\*\*[^*]+\*\*$/.test(seg)
+      ? <strong key={k+'-'+i} style={{color:'var(--text-strong)'}}>{seg.slice(2,-2)}</strong>
+      : seg);
+  const lines=String(text).split('\n');
+  const out=[]; let list=null, listType=null;
+  const flush=()=>{
+    if(!list) return;
+    const Tag=listType==='ol'?'ol':'ul';
+    out.push(<Tag key={'l'+out.length} style={{margin:'4px 0 8px',paddingLeft:22,display:'flex',
+      flexDirection:'column',gap:3}}>{list}</Tag>);
+    list=null; listType=null;
+  };
+  lines.forEach((raw,i)=>{
+    const line=raw.trim();
+    const mBul=line.match(/^[-•*]\s+(.*)/);
+    const mNum=line.match(/^\d+[.)]\s+(.*)/);
+    const mHead=line.match(/^#{1,3}\s+(.*)/);
+    if(mBul||mNum){
+      const type=mBul?'ul':'ol';
+      if(listType&&listType!==type) flush();
+      listType=type; list=list||[];
+      list.push(<li key={i} style={{fontSize:size,color:'var(--text-body)',lineHeight:1.55}}>{bold((mBul||mNum)[1],i)}</li>);
+      return;
+    }
+    flush();
+    if(!line){ out.push(<div key={i} style={{height:8}} />); return; }
+    if(mHead){
+      out.push(<div key={i} style={{fontSize:size,fontWeight:800,color:'var(--text-strong)',
+        margin:'6px 0 2px'}}>{bold(mHead[1],i)}</div>);
+      return;
+    }
+    if(/^[^.!?]{2,48}:$/.test(line)){
+      out.push(<div key={i} style={{fontSize:size,fontWeight:700,color:'var(--navy-700)',
+        margin:'6px 0 2px'}}>{line}</div>);
+      return;
+    }
+    out.push(<div key={i} style={{fontSize:size,color:'var(--text-body)',lineHeight:1.6}}>{bold(line,i)}</div>);
+  });
+  flush();
+  return <div>{out}</div>;
+}
+
+// Full lesson plan, opened by tapping a session card.
+function SessionSheet({ open, session, onClose, onEdit }) {
+  if(!session) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Lesson plan"
+      footer={<>
+        <Btn variant="ghost" size="sm" onClick={onClose}>Close</Btn>
+        <Btn variant="primary" size="sm" iL={<Icon n="pencil" size={14} />} onClick={onEdit}>Edit</Btn>
+      </>}>
+      <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        <div>
+          <div style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.01em'}}>{session.title}</div>
+          {session.scripture&&<div style={{fontSize:'var(--text-md)',color:'var(--navy-600)',fontWeight:700,marginTop:4}}>{session.scripture}</div>}
+          {session.theme&&<div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:3,fontStyle:'italic'}}>{session.theme}</div>}
+          <div style={{display:'flex',alignItems:'center',gap:10,marginTop:10,flexWrap:'wrap'}}>
+            <Badge tone="navy"><Icon n="calendar" size={11} style={{marginRight:4}} />{fmtFull(session.date)}</Badge>
+            {session.addedBy&&<Badge tone="sky">Planned by {session.addedBy}</Badge>}
+            {session.editedBy&&session.editedBy!==session.addedBy&&<Badge tone="neutral">Edited by {session.editedBy}</Badge>}
+          </div>
+        </div>
+        {session.materials&&session.materials.length>0&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.05em',
+              textTransform:'uppercase',marginBottom:6}}>Materials</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+              {session.materials.map((m,i)=><Badge key={i} tone="neutral" size="sm">{m}</Badge>)}
+            </div>
+          </div>
+        )}
+        {session.notes&&(
+          <div style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-lg)',padding:'var(--space-4)'}}>
+            <RichText text={session.notes} />
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
+  const [viewId,setViewId]=useState(null);
   const isDesk=useMedia('(min-width:1024px)');
   const sorted=[...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const editing=sessions.find(s=>s.id===editId);
+  const viewing=sessions.find(s=>s.id===viewId);
 
   return (
     <div className="page" style={{maxWidth:isDesk?1100:680,margin:'0 auto',padding:isDesk?'8px 36px 32px':undefined}}>
@@ -1954,9 +2057,11 @@ function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
           </div>
         )}
         {sorted.map(s=>(
-          <div key={s.id} style={{background:'var(--surface-card)',borderRadius:'var(--radius-lg)',
+          <div key={s.id} onClick={()=>setViewId(s.id)} style={{background:'var(--surface-card)',borderRadius:'var(--radius-lg)',
             padding:'var(--space-4)',marginBottom:'var(--space-3)',border:'1px solid var(--border-soft)',
-            boxShadow:'var(--shadow-xs)'}}>
+            boxShadow:'var(--shadow-xs)',cursor:'pointer',transition:'transform 150ms ease,box-shadow 150ms ease'}}
+            onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='var(--shadow-md)';}}
+            onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='var(--shadow-xs)';}}>
             <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
               <div style={{width:44,height:44,borderRadius:'var(--radius-md)',background:'var(--navy-50)',
                 display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'var(--navy-700)'}}>
@@ -1966,18 +2071,35 @@ function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
                 <div style={{fontWeight:700,color:'var(--text-strong)'}}>{s.title}</div>
                 {s.scripture&&<div style={{fontSize:'var(--text-sm)',color:'var(--navy-600)',fontWeight:600,marginTop:2}}>{s.scripture}</div>}
                 {s.theme&&<div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:2,fontStyle:'italic'}}>{s.theme}</div>}
-                {s.notes&&<div style={{fontSize:'var(--text-sm)',color:'var(--text-body)',marginTop:6,lineHeight:1.5}}>{s.notes}</div>}
-                {s.materials&&s.materials.length>0&&(
-                  <div style={{display:'flex',flexWrap:'wrap',gap:5,marginTop:8}}>
-                    {s.materials.map((m,i)=><Badge key={i} tone="neutral" size="sm">{m}</Badge>)}
+                {s.notes&&(
+                  <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:6,lineHeight:1.5,
+                    display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden',
+                    whiteSpace:'pre-line'}}>{s.notes}</div>
+                )}
+                {s.notes&&s.notes.split('\n').join(' ').length>140&&(
+                  <div style={{fontSize:'var(--text-xs)',fontWeight:700,color:'var(--navy-600)',marginTop:5}}>
+                    Read the full plan →
                   </div>
                 )}
-                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:8}}>
-                  <Icon n="calendar" size={13} color="var(--text-muted)" />
-                  <span style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',fontWeight:600}}>{fmtShort(s.date)}</span>
+                {s.materials&&s.materials.length>0&&(
+                  <div style={{display:'flex',flexWrap:'wrap',gap:5,marginTop:8}}>
+                    {s.materials.slice(0,4).map((m,i)=><Badge key={i} tone="neutral" size="sm">{m}</Badge>)}
+                    {s.materials.length>4&&<Badge tone="neutral" size="sm">+{s.materials.length-4}</Badge>}
+                  </div>
+                )}
+                <div style={{display:'flex',alignItems:'center',gap:10,marginTop:8,flexWrap:'wrap'}}>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:'var(--text-xs)',color:'var(--text-muted)',fontWeight:600}}>
+                    <Icon n="calendar" size={13} />{fmtShort(s.date)}
+                  </span>
+                  {s.addedBy&&(
+                    <span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:'var(--text-xs)',color:'var(--text-muted)'}}>
+                      <Av name={s.addedBy} size="xs" style={{width:18,height:18,fontSize:8}} />
+                      {s.addedBy}{s.editedBy&&s.editedBy!==s.addedBy?` · edited by ${s.editedBy}`:''}
+                    </span>
+                  )}
                 </div>
               </div>
-              <button onClick={()=>{setEditId(s.id);setShowForm(true);}} style={{width:32,height:32,
+              <button onClick={e=>{e.stopPropagation();setEditId(s.id);setShowForm(true);}} style={{width:32,height:32,
                 borderRadius:'50%',border:'none',background:'var(--navy-50)',color:'var(--navy-700)',
                 cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                 <Icon n="pencil" size={14} />
@@ -1992,6 +2114,9 @@ function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
         onSave={data=>{ editId?onEdit({...data,id:editId}):onAdd(data); setShowForm(false); setEditId(null); }}
         onDelete={editId?()=>{onDelete(editId);setShowForm(false);setEditId(null);}:null}
         onClose={()=>{setShowForm(false);setEditId(null);}} />
+
+      <SessionSheet open={!!viewing} session={viewing} onClose={()=>setViewId(null)}
+        onEdit={()=>{ setEditId(viewId); setViewId(null); setShowForm(true); }} />
     </div>
   );
 }
@@ -2046,7 +2171,24 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
             {sun.map(s=>{ const k=dk(s); return <option key={k} value={k}>{fmtFull(k)}</option>; })}
           </select>
         </div>
-        <Input label="Notes / lesson plan" placeholder="Key points, discussion questions, activities…" value={f.notes} onChange={set('notes')} multi rows={4} />
+        <div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6,gap:8,flexWrap:'wrap'}}>
+            <label style={{fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)'}}>Notes / lesson plan</label>
+            <div style={{display:'flex',gap:6}}>
+              {[
+                ['Lesson outline','Opening prayer & welcome:\n\nBible story:\n- \n\nMemory verse:\n\nDiscussion questions:\n1. \n2. \n\nActivity / game:\n\nClosing prayer:'],
+                ['Story + craft','Bible story:\n- \n\nKey lesson:\n\nCraft / activity:\n- Materials: \n- Steps: \n\nMemory verse:'],
+              ].map(([label,body])=>(
+                <button key={label} type="button" onClick={()=>setF(p=>({...p,notes:p.notes.trim()?p.notes+'\n\n'+body:body}))}
+                  style={{padding:'5px 11px',borderRadius:'var(--radius-pill)',border:'1px solid var(--border-default)',
+                    background:'var(--surface-sunken)',cursor:'pointer',fontFamily:'var(--font-sans)',
+                    fontSize:11,fontWeight:700,color:'var(--navy-700)'}}>+ {label}</button>
+              ))}
+            </div>
+          </div>
+          <Input placeholder="Key points, discussion questions, activities…" value={f.notes} onChange={set('notes')} multi rows={7}
+            hint="Press Enter for new lines — they're kept. Start lines with “-” for bullets, “1.” for numbered steps, end a short line with “:” for a section heading." />
+        </div>
         <Input label="Materials needed" placeholder="Bible, worksheets, colored pencils…" value={f.materials} onChange={set('materials')} hint="Separate with commas" />
       </div>
     </Modal>
@@ -2377,6 +2519,10 @@ function App() {
   const t=s=>tr(lang,s);
   const setLanguage=l=>{ setLang(l); save(LANG_KEY,l); };
 
+  // Teacher display name — shown on lesson plans this device creates/edits.
+  const [teacher,setTeacher]=useState(()=>load('fecmy_teacher',''));
+  const saveTeacher=v=>{ setTeacher(v); save('fecmy_teacher',v); };
+
   // Latest data snapshot for the sync engine (state is async; this is not)
   const dataRef=useRef(null);
   if(dataRef.current===null) dataRef.current={students,classes,sessions,attendance};
@@ -2515,7 +2661,17 @@ function App() {
   const cloudApi={
     connect:(url,key)=>{
       if(!window.supabase) throw new Error('Sync library not loaded — check your internet and reload');
-      save(CLOUD_CFG_KEY,{url:url.trim().replace(/\/+$/,''),key:key.trim()});
+      // Normalize whatever got pasted down to https://<ref>.supabase.co —
+      // people paste the REST endpoint or the dashboard address by accident.
+      let u=url.trim();
+      if(!/^https?:\/\//i.test(u)) u='https://'+u;
+      let parsed; try{ parsed=new URL(u); }catch{ throw new Error('That URL doesn’t look right — it should be like https://abcdefgh.supabase.co'); }
+      const dash=parsed.hostname==='supabase.com'&&parsed.pathname.match(/\/project\/([a-z0-9-]+)/i);
+      const base=dash?`https://${dash[1]}.supabase.co`:parsed.origin;
+      if(!/\.supabase\.(co|in)$/i.test(new URL(base).hostname))
+        throw new Error('Use the Project URL from Settings → Data API — it looks like https://abcdefgh.supabase.co');
+      if(key.trim().length<20) throw new Error('That key looks too short — copy the full “anon public” key');
+      save(CLOUD_CFG_KEY,{url:base,key:key.trim()});
       sbRef.current=null;
       if(!getClient()) throw new Error('Could not create client — check the URL and key');
       setCloud({cfg:load(CLOUD_CFG_KEY,null),user:null,status:'signedout',last:null,err:null});
@@ -2536,7 +2692,10 @@ function App() {
     },
     signOut:()=>{ try{getClient()?.auth.signOut();}catch{} setCloud(p=>({...p,user:null,status:'signedout'})); },
     disconnect:()=>{ try{getClient()?.auth.signOut();}catch{} try{localStorage.removeItem(CLOUD_CFG_KEY);}catch{}
-      sbRef.current=null; setCloud({cfg:null,user:null,status:'off',last:null,err:null}); },
+      sbRef.current=null;
+      // fall back to the published team project (if baked in) rather than the connect form
+      const def=cloudCfg();
+      setCloud({cfg:def,user:null,status:def?'signedout':'off',last:null,err:null}); },
     syncNow:fullSync,
     backup:()=>{
       const d=dataRef.current;
@@ -2584,7 +2743,8 @@ function App() {
   const screens={
     dashboard:<Dashboard students={students} attendance={attendance} sessions={sessions} classes={classes}
       onNav={setTab} onReset={resetAll} onOpenClass={openClass} onSearch={doSearch}
-      cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t} />,
+      cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t}
+      teacher={teacher} setTeacher={saveTeacher} />,
     classes:<Classes classes={classes} students={students} attendance={attendance} t={t}
       onAdd={d=>{saveCls([...classes,{...d,id:uid()}]);notify('Class created');}}
       onEdit={d=>{saveCls(classes.map(c=>c.id===d.id?d:c));notify('Class updated');}}
@@ -2603,10 +2763,13 @@ function App() {
       onAddVisitor={addVisitor} onSave={(ds,marks)=>{
         saveAtt({...attendance,[ds]:{...(attendance[ds]||{}),...marks}});
       }} />,
-    sessions:<Sessions sessions={sessions} t={t}
-      onAdd={d=>{saveSess([...sessions,{...d,id:uid()}]);notify('Session planned');}}
-      onEdit={d=>{saveSess(sessions.map(s=>s.id===d.id?d:s));notify('Session updated');}}
-      onDelete={id=>{saveSess(sessions.filter(s=>s.id!==id));notify('Session removed');}} />,
+    sessions:(()=>{ // stamp who planned / edited (name from Settings, else signed-in email)
+      const me=teacher.trim()||(cloud.user?cloud.user.split('@')[0]:'');
+      return <Sessions sessions={sessions} t={t}
+        onAdd={d=>{saveSess([...sessions,{...d,id:uid(),addedBy:me||undefined}]);notify('Session planned');}}
+        onEdit={d=>{saveSess(sessions.map(s=>s.id===d.id?{...s,...d,editedBy:me||s.editedBy}:s));notify('Session updated');}}
+        onDelete={id=>{saveSess(sessions.filter(s=>s.id!==id));notify('Session removed');}} />;
+    })(),
     reports:<Reports students={students} classes={classes} attendance={attendance} t={t} />,
   };
 
