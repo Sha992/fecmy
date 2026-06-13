@@ -202,6 +202,28 @@ function getSundays(n=14) {
   const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-d.getDay()); // most recent Sunday (today if Sunday)
   return Array.from({length:n},(_,i)=>{ const x=new Date(d); x.setDate(x.getDate()-i*7); return x; });
 }
+// The "current" class Sunday = the nearest one: today if Sunday, the Sunday
+// just gone early in the week (Mon–Wed), or the upcoming Sunday once we're
+// past midweek (Thu–Sat). This is what the dashboard & attendance default to.
+function currentSunday() {
+  const d=new Date(); d.setHours(0,0,0,0);
+  const dow=d.getDay(); // 0=Sun … 6=Sat
+  const shift = dow===0 ? 0 : (dow<=3 ? -dow : 7-dow);
+  d.setDate(d.getDate()+shift);
+  return d;
+}
+// Current Sunday + recent past ones (for recording / back-filling attendance).
+function recentSundays(n=14) {
+  const base=currentSunday();
+  return Array.from({length:n},(_,i)=>{ const x=new Date(base); x.setDate(x.getDate()-i*7); return x; });
+}
+// Upcoming Sundays only (for planning lessons): today if Sunday, then forward.
+function upcomingSundays(n=14) {
+  const d=new Date(); d.setHours(0,0,0,0);
+  const dow=d.getDay();
+  d.setDate(d.getDate()+(dow===0?0:7-dow)); // this Sunday or the next one
+  return Array.from({length:n},(_,i)=>{ const x=new Date(d); x.setDate(x.getDate()+i*7); return x; });
+}
 // Local date key (YYYY-MM-DD) — NOT toISOString(), which is UTC and would
 // roll a local-midnight Sunday back to Saturday in +UTC timezones.
 function dk(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -853,8 +875,9 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
   cloud, cloudApi, lang, setLanguage, t=s=>s, teacher='', setTeacher }) {
   const [showSettings, setShowSettings] = useState(false);
   const realToday = dk(new Date());           // the actual calendar date
-  const today = dk(getSundays(1)[0]);          // the class day (this/most-recent Sunday)
+  const today = dk(currentSunday());           // the class day (nearest Sunday; upcoming once past midweek)
   const isSunday = realToday===today;
+  const isUpcoming = today>realToday;          // class Sunday is still ahead of us
   const todayAtt = attendance[today]||{};
   const present = students.filter(s=>todayAtt[s.id]===true).length;
   const marked = Object.keys(todayAtt).length;
@@ -901,7 +924,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
   const greeting = t(hour<12?'Good morning':hour<18?'Good afternoon':'Good evening');
   const subtitle = marked>0
     ? `${present} checked in ${isSunday?'today':'on '+fmtShort(today)}`
-    : (isSunday?'No attendance yet today':`Sunday ${fmtShort(today)} not recorded yet`);
+    : (isSunday?'No attendance yet today':isUpcoming?`Sunday ${fmtShort(today)} coming up`:`Sunday ${fmtShort(today)} not recorded yet`);
 
   /* ── Desktop dashboard ── */
   if(isDesk) return (
@@ -952,13 +975,15 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
           <Logo color="var(--cream-50)" size={230} style={{position:'absolute',right:-40,bottom:-50,opacity:.07,pointerEvents:'none'}} />
           <div style={{position:'relative'}}>
             <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--navy-100)'}}>
-              {isSunday?'This Sunday':'Class day · Sunday'}
+              {isSunday?'This Sunday':isUpcoming?'Upcoming · Sunday':'Class day · Sunday'}
             </div>
             <div style={{fontSize:'var(--text-2xl)',fontWeight:800,letterSpacing:'-.02em',marginTop:8,lineHeight:1.15}}>
               {fmtFull(today)}
             </div>
             <p style={{fontSize:'var(--text-sm)',color:'var(--navy-100)',marginTop:8,maxWidth:'46ch',lineHeight:1.55}}>
-              {marked>0?`${present} of ${students.length} children checked in. Keep it up!`:'Attendance has not been recorded for this Sunday yet — it takes about a minute.'}
+              {marked>0?`${present} of ${students.length} children checked in. Keep it up!`
+                :isUpcoming?'Coming up — plan your lesson now, and check the children in on the day.'
+                :'Attendance has not been recorded for this Sunday yet — it takes about a minute.'}
             </p>
             <div style={{display:'flex',gap:10,marginTop:18}}>
               <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>
@@ -1033,7 +1058,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
           <p style={{fontSize:'var(--text-sm)',color:'var(--navy-100)',marginTop:4,lineHeight:1.5}}>
             {students.length} students · {marked>0
               ? `${present} checked in ${isSunday?'today':'on '+fmtShort(today)}`
-              : (isSunday?'No attendance yet today':`Sunday ${fmtShort(today)} not recorded yet`)}
+              : (isSunday?'No attendance yet today':isUpcoming?`Sunday ${fmtShort(today)} coming up`:`Sunday ${fmtShort(today)} not recorded yet`)}
           </p>
           <div style={{display:'flex',gap:10,marginTop:16,flexWrap:'wrap'}}>
             <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>
@@ -1729,7 +1754,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
   const [showVisitor,setShowVisitor]=useState(false);
   const [visName,setVisName]=useState('');
   const [visPhone,setVisPhone]=useState('');
-  const sundays=getSundays(14);
+  const sundays=recentSundays(14);
   const [selDate,setSelDate]=useState(dk(sundays[0]));
   const [marks,setMarks]=useState({});
   const [saved,setSaved]=useState(false);
@@ -2122,7 +2147,7 @@ function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
 }
 
 function SessionForm({ open, session, onSave, onDelete, onClose }) {
-  const sun=getSundays(14);
+  const sun=upcomingSundays(14);
   const blank={title:'',scripture:'',theme:'',date:dk(sun[0]),notes:'',materials:''};
   const [f,setF]=useState(blank);
   const [err,setErr]=useState({});
@@ -2137,6 +2162,12 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
   },[open,session]);
 
   const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
+  // Upcoming Sundays, plus this session's saved date if it falls outside that window.
+  const dateOptions=(()=>{
+    const ks=sun.map(dk);
+    if(f.date && !ks.includes(f.date)) return [f.date,...ks].sort();
+    return ks;
+  })();
   const go=()=>{
     if(!f.title.trim()){setErr({title:'Title required'});return;}
     onSave({title:f.title.trim(),scripture:f.scripture.trim(),theme:f.theme.trim(),date:f.date,
@@ -2168,7 +2199,7 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
             borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
             background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-md)',
             color:'var(--text-strong)',outline:'none'}}>
-            {sun.map(s=>{ const k=dk(s); return <option key={k} value={k}>{fmtFull(k)}</option>; })}
+            {dateOptions.map(k=><option key={k} value={k}>{fmtFull(k)}</option>)}
           </select>
         </div>
         <div>
@@ -2200,7 +2231,7 @@ function Classes({ classes, students, attendance, onAdd, onEdit, onDelete, onOpe
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const isDesk=useMedia('(min-width:1024px)');
-  const today=dk(getSundays(1)[0]);
+  const today=dk(currentSunday());
   const todayAtt=attendance[today]||{};
   const editing=classes.find(c=>c.id===editId);
   const countIn=cid=>students.filter(s=>s.classId===cid).length;
