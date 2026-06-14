@@ -1854,7 +1854,9 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
     const ex=attendance[selDate]||{};
     setMarks(Object.fromEntries(classStudents.map(s=>[s.id,ex[s.id]??null])));
     setSaved(classStudents.length>0 && classStudents.every(s=>s.id in ex));
-  },[selDate,activeClassId,students.length]);
+  // NB: intentionally NOT depending on students — adding a visitor mid-session
+  // must not rebuild marks from saved data and wipe unsaved ticks.
+  },[selDate,activeClassId]);
 
   const toggle=id=>{
     setSaved(false);
@@ -1992,7 +1994,8 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
                   style={{flex:'1 1 130px',padding:'9px 12px',borderRadius:'var(--radius-md)',border:'1.5px solid var(--border-default)',
                     background:'var(--paper)',fontFamily:'var(--font-sans)',fontSize:'var(--text-sm)',outline:'none'}} />
                 <Btn variant="primary" size="sm" disabled={!visName.trim()} onClick={()=>{
-                  onAddVisitor(visName.trim(),visPhone.trim(),cls.id,selDate);
+                  const id=onAddVisitor(visName.trim(),visPhone.trim(),cls.id,selDate);
+                  if(id){ setMarks(m=>({...m,[id]:true})); setSaved(false); }  // mark present locally; keep existing ticks
                   setVisName(''); setVisPhone(''); setShowVisitor(false);
                 }}>{t('Add')}</Btn>
               </div>
@@ -2015,7 +2018,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
           const isPresent=st===true, isAbsent=st===false;
           return (
             <div key={s.id} className="stagger" style={{display:'flex',alignItems:'center',gap:12,padding:'var(--space-4)',
-              background:'var(--surface-card)',borderRadius:'var(--radius-lg)',marginBottom:'var(--space-2)',
+              background:'var(--surface-card)',borderRadius:'var(--radius-lg)',marginBottom:'var(--space-3)',
               border:`1.5px solid ${isPresent?'var(--leaf-500)':isAbsent?'var(--coral-500)':'var(--border-soft)'}`,
               boxShadow:'var(--shadow-xs)',transition:'border-color 150ms ease',
               animationDelay:`${Math.min(idx*18,300)}ms`}}>
@@ -2028,7 +2031,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
                 {s.age&&<div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)'}}>Age {s.age}</div>}
               </div>
               <button onClick={()=>toggle(s.id)} style={{
-                display:'flex',alignItems:'center',gap:7,padding:'9px 14px',
+                display:'flex',alignItems:'center',justifyContent:'center',gap:7,padding:'9px 14px',minWidth:118,
                 borderRadius:'var(--radius-pill)',border:`1.5px solid ${isPresent?'var(--leaf-500)':isAbsent?'var(--coral-500)':'var(--border-default)'}`,
                 background:isPresent?'var(--leaf-100)':isAbsent?'var(--coral-100)':'var(--surface-card)',
                 color:isPresent?'#2F6B47':isAbsent?'#B23A2C':'var(--text-muted)',
@@ -2922,12 +2925,13 @@ function App() {
   const [collapsed,setCollapsed]=useState(()=>load('fecmy_sidebar_collapsed',false));
   const toggleCollapse=()=>{ const v=!collapsed; setCollapsed(v); save('fecmy_sidebar_collapsed',v); };
 
-  // Visitor quick-add: create flagged student + mark present on that Sunday
+  // Visitor quick-add: just create the flagged student and return its id.
+  // The Attendance screen marks them present in its LOCAL marks so unsaved
+  // ticks are preserved; the visitor is persisted when the teacher hits Save.
   const addVisitor=(name,phone,classId,date)=>{
     const v={id:uid(),name,classId,age:'',parentName:'',parentPhone:phone||'',notes:'',
       visitor:true,firstVisit:date,addedAt:dk(new Date())};
     saveS([...dataRef.current.students,v]);
-    saveAtt({...dataRef.current.attendance,[date]:{...(dataRef.current.attendance[date]||{}),[v.id]:true}});
     notify(t('Visitor')+' · '+name+' ✓');
     return v.id;
   };
