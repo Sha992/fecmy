@@ -151,6 +151,7 @@ input,textarea,select,button{font-family:var(--font-sans)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes popIn{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes guidePop{0%{transform:scale(.92) translateY(12px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
 @keyframes toastIn{from{transform:translate(-50%,16px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 @keyframes confettiFall{0%{opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:.9}}
 @keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
@@ -257,6 +258,7 @@ const AM={
   'Birthdays':'የልደት ቀናት','Good morning':'እንደምን አደሩ','Good afternoon':'እንደምን ዋሉ','Good evening':'እንደምን አመሹ',
   'Search students or parents…':'ተማሪ ወይም ወላጅ ፈልግ…','Plan':'እቅድ','Plan a lesson':'ትምህርት አቅድ',
   'Today’s classes':'የዛሬ ክፍሎች','Recent attendance':'የቅርብ ጊዜ መገኘት','Attendance trend':'የመገኘት አዝማሚያ','Next session':'ቀጣይ ትምህርት',
+  'Guide':'መመሪያ','Replay guided tour':'መመሪያውን እንደገና አሳይ',
 };
 function tr(lang,s){ return lang==='am' && AM[s] ? AM[s] : s; }
 
@@ -431,6 +433,8 @@ const ICONS = {
   'moon':'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   'panel-left':'M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM9 4v16',
   'menu':'M3 12h18M3 6h18M3 18h18',
+  'help-circle':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3M12 17h.01',
+  'compass':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.2 7.8l-2.9 6.4-6.4 2.9 2.9-6.4 6.4-2.9z',
 };
 
 function Icon({ n, size=20, color, style={} }) {
@@ -957,7 +961,7 @@ function SearchBox({ onSubmit, width=250 }) {
 
 /* ── DASHBOARD ── */
 function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset, onOpenClass, onSearch,
-  cloud, cloudApi, lang, setLanguage, t=s=>s, teacher='', setTeacher, onOpenSettings }) {
+  cloud, cloudApi, lang, setLanguage, t=s=>s, teacher='', setTeacher, onOpenSettings, onOpenGuide }) {
   const realToday = dk(new Date());           // the actual calendar date
   const today = dk(currentSunday());           // the class day (nearest Sunday; upcoming once past midweek)
   const isSunday = realToday===today;
@@ -1116,7 +1120,13 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
               <div style={{color:'var(--cream-50)',fontWeight:800,fontSize:'var(--text-md)'}}>FECMY</div>
               <div style={{color:'var(--navy-300)',fontSize:11,fontWeight:600}}>Children Ministry</div>
             </div>
-            <button onClick={onOpenSettings} aria-label="Settings" style={{marginLeft:'auto',
+            <button onClick={onOpenGuide} aria-label={t('Guide')} title={t('Guide')} style={{marginLeft:'auto',
+              width:38,height:38,borderRadius:'50%',border:'1px solid rgba(251,247,240,.2)',
+              background:'rgba(251,247,240,.08)',color:'var(--cream-50)',cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <Icon n="help-circle" size={18} />
+            </button>
+            <button onClick={onOpenSettings} aria-label="Settings" style={{
               width:38,height:38,borderRadius:'50%',border:'1px solid rgba(251,247,240,.2)',
               background:'rgba(251,247,240,.08)',color:'var(--cream-50)',cursor:'pointer',
               display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -1304,7 +1314,7 @@ function CloudSection({ cloud, api }) {
   );
 }
 
-function SettingsSheet({ open, onClose, onReset, students, attendance, sessions, cloud, cloudApi, lang, setLanguage, t=s=>s, teacher='', setTeacher, theme='light', onToggleTheme }) {
+function SettingsSheet({ open, onClose, onReset, students, attendance, sessions, cloud, cloudApi, lang, setLanguage, t=s=>s, teacher='', setTeacher, theme='light', onToggleTheme, onOpenGuide }) {
   const [confirm,setConfirm]=useState(false);
   const fileRef=useRef(null);
   const [restoreErr,setRestoreErr]=useState(null);
@@ -1396,6 +1406,9 @@ function SettingsSheet({ open, onClose, onReset, students, attendance, sessions,
             ))}
           </div>
         </div>
+
+        {/* Guided tour */}
+        <Btn variant="secondary" full iL={<Icon n="compass" size={16} />} onClick={onOpenGuide}>{t('Replay guided tour')}</Btn>
 
         {/* Cloud sync */}
         <CloudSection cloud={cloud} api={cloudApi} />
@@ -2579,6 +2592,153 @@ function Reports({ students, classes, attendance, t=s=>s }) {
   );
 }
 
+/* ── GUIDED TOUR ── */
+// Small on-brand mock visuals (stay in sync with the real UI; crisp at any size).
+function GV({ children, tone='navy', cross }) {
+  return (
+    <div style={{position:'relative',height:184,borderRadius:'var(--radius-lg)',overflow:'hidden',
+      display:'flex',alignItems:'center',justifyContent:'center',padding:'var(--space-5)',
+      background: tone==='navy' ? 'var(--navy-800)' : 'var(--surface-sunken)',
+      backgroundImage: tone==='navy' ? 'radial-gradient(110% 120% at 100% 0%,rgba(143,178,198,.22),transparent 55%)' : 'none'}}>
+      {cross && <Logo color="var(--cream-50)" size={170} style={{position:'absolute',right:-34,bottom:-44,opacity:.08,pointerEvents:'none'}} />}
+      <div style={{position:'relative',width:'100%'}}>{children}</div>
+    </div>
+  );
+}
+function MiniStat({ v, l, tone='navy' }) {
+  return <div style={{flex:1,background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',padding:'12px 14px',boxShadow:'var(--shadow-xs)'}}>
+    <div style={{width:26,height:26,borderRadius:8,background:`var(--${tone}-100)`,color:`var(--${tone}-500)`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:7}}><Icon n={tone==='leaf'?'check-circle-2':'users'} size={14}/></div>
+    <div style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',lineHeight:1}}>{v}</div>
+    <div style={{fontSize:10,color:'var(--text-muted)',marginTop:3}}>{l}</div>
+  </div>;
+}
+function MiniRow({ name, tone='navy', pill, pillTone='leaf', call }) {
+  return <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',padding:'10px 12px',boxShadow:'var(--shadow-xs)'}}>
+    <span style={{width:30,height:30,borderRadius:'50%',background:`var(--${tone}-500)`,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11,flexShrink:0}}>{name.slice(0,2)}</span>
+    <div style={{flex:1,minWidth:0}}><div style={{height:8,width:'62%',borderRadius:4,background:'var(--ink-200)'}} /><div style={{height:6,width:'40%',borderRadius:3,background:'var(--ink-100)',marginTop:6}} /></div>
+    {call && <span style={{width:30,height:30,borderRadius:'50%',background:'var(--leaf-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon n="phone" size={13}/></span>}
+    {pill && <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'6px 12px',borderRadius:999,background:`var(--${pillTone}-100)`,color:pillTone==='leaf'?'#2F6B47':'#B23A2C',fontWeight:700,fontSize:12,whiteSpace:'nowrap'}}><Icon n={pillTone==='leaf'?'check':'x'} size={12}/>{pill}</span>}
+  </div>;
+}
+
+function GuideTour({ open, onClose, t=s=>s }) {
+  const [i,setI]=useState(0);
+  useEffect(()=>{ if(open) setI(0); },[open]);
+  if(!open) return null;
+
+  const steps=[
+    { tag:'Welcome', title:'A simpler way to shepherd the class',
+      body:'This replaces the paper register. No more lost sheets, manual counting, or guessing who has drifted away — every Sunday is saved, shared with your team, and a tap away.',
+      visual:<GV tone="navy" cross><div style={{textAlign:'center'}}>
+        <Logo color="var(--cream-50)" size={46} style={{margin:'0 auto'}} />
+        <div style={{color:'var(--cream-50)',fontWeight:800,fontSize:'var(--text-lg)',marginTop:10}}>FECMY Children Ministry</div>
+        <div style={{color:'var(--navy-100)',fontSize:'var(--text-xs)',marginTop:4}}>Attendance · Care · Together</div>
+      </div></GV> },
+    { tag:'Why it helps', title:'The problems it solves',
+      body:'Paper sheets get lost and are hard to add up. It’s easy to miss a child who quietly stopped coming. And only one person ever has the register. This fixes all three.',
+      visual:<GV tone="sunken"><div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {[['Never lose a Sunday again','check'],['Spot kids who’ve stopped coming','check'],['Shared live with every teacher','check']].map(([txt])=>(
+          <div key={txt} style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',padding:'10px 12px'}}>
+            <span style={{width:24,height:24,borderRadius:'50%',background:'var(--leaf-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon n="check" size={13}/></span>
+            <span style={{fontSize:'var(--text-sm)',color:'var(--text-strong)',fontWeight:600}}>{txt}</span>
+          </div>))}
+      </div></GV> },
+    { tag:'Dashboard', title:'Your Sunday at a glance',
+      body:'See today’s class day, how many children have checked in, who needs a follow-up, upcoming birthdays, and the attendance trend — all on the home screen.',
+      visual:<GV tone="sunken"><div style={{display:'flex',gap:10}}><MiniStat v="49" l="Students" tone="navy"/><MiniStat v="86%" l="Attendance" tone="leaf"/></div></GV> },
+    { tag:'Attendance', title:'Check the children in',
+      body:'Pick the Sunday, then tap each child Present or Absent — or use “All present”. Add a first-time visitor on the spot, then Save. It even works with no internet.',
+      visual:<GV tone="sunken"><div style={{display:'flex',flexDirection:'column',gap:8}}>
+        <MiniRow name="ሃዳ" tone="leaf" pill="Present" pillTone="leaf"/>
+        <MiniRow name="ሄአ" tone="coral" pill="Absent" pillTone="coral"/></div></GV> },
+    { tag:'Students', title:'Every child’s details',
+      body:'Tap a child to see their attendance history, parent’s phone (tap to call), age and notes. Add or edit anyone, and search by name or parent in seconds.',
+      visual:<GV tone="sunken"><div style={{display:'flex',flexDirection:'column',gap:8}}>
+        <MiniRow name="ና" tone="sky" call/><MiniRow name="ቤ" tone="grape" call/></div></GV> },
+    { tag:'Classes & Sessions', title:'Groups and lesson plans',
+      body:'Classes hold your age groups and their teachers. Sessions is where you plan each week’s lesson — scripture, theme and activities — and see who planned what.',
+      visual:<GV tone="sunken"><div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
+        <div style={{height:5,background:'var(--navy-600)'}}/>
+        <div style={{padding:'12px 14px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div style={{fontWeight:800,color:'var(--text-strong)',fontSize:'var(--text-sm)'}}>Ages 10–14 class</div><span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:999,background:'var(--navy-100)',color:'#0A3956'}}>Ages 10–14</span></div>
+          <div style={{height:7,borderRadius:4,background:'var(--surface-sunken)',marginTop:10,overflow:'hidden'}}><div style={{width:'64%',height:'100%',background:'var(--navy-600)'}}/></div>
+        </div></div></GV> },
+    { tag:'Reports', title:'The whole term on one page',
+      body:'A full register — every child across every Sunday, with green/red marks and percentages. Print it or export to share with church leadership.',
+      visual:<GV tone="sunken"><div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',padding:'12px',boxShadow:'var(--shadow-xs)'}}>
+        {[0,1,2].map(r=>(<div key={r} style={{display:'flex',alignItems:'center',gap:8,marginBottom:r<2?8:0}}>
+          <div style={{height:7,width:54,borderRadius:3,background:'var(--ink-200)'}}/>
+          {[0,1,2,3,4].map(ccc=>{const ok=(r+ccc)%4!==0;return <span key={ccc} style={{width:16,height:16,borderRadius:'50%',background:ok?'var(--leaf-500)':'var(--coral-100)',display:'flex',alignItems:'center',justifyContent:'center'}}>{ok?<Icon n="check" size={9} color="#fff"/>:<Icon n="x" size={8} color="#B23A2C"/>}</span>;})}
+        </div>))}</div></GV> },
+    { tag:'Never lose a child', title:'3-Sunday absence alerts',
+      body:'If a child misses three Sundays in a row, the app flags them on the dashboard with a tap-to-call button — so you can reach out before anyone slips away.',
+      visual:<GV tone="sunken"><div style={{background:'var(--coral-100)',border:'1px solid rgba(239,111,94,.25)',borderRadius:'var(--radius-md)',padding:'12px 14px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,color:'#B23A2C',fontWeight:700,fontSize:'var(--text-sm)',marginBottom:10}}><Icon n="alert-circle" size={16}/>Absent 3 Sundays</div>
+        <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper)',borderRadius:'var(--radius-md)',padding:'9px 11px'}}>
+          <span style={{width:28,height:28,borderRadius:'50%',background:'var(--sky-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11}}>ና</span>
+          <div style={{flex:1}}><div style={{height:8,width:'60%',borderRadius:4,background:'var(--ink-200)'}}/></div>
+          <span style={{width:30,height:30,borderRadius:'50%',background:'var(--coral-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="phone" size={13}/></span>
+        </div></div></GV> },
+    { tag:'Team sync', title:'One shared register for all teachers',
+      body:'Sign in once and every teacher sees the same live data on their own phone — mark a child present on one phone and it appears on the others. Works great offline too.',
+      visual:<GV tone="navy"><div style={{textAlign:'center',color:'var(--cream-50)'}}>
+        <span style={{display:'inline-flex',width:54,height:54,borderRadius:'var(--radius-lg)',background:'rgba(251,247,240,.12)',alignItems:'center',justifyContent:'center'}}><Icon n="cloud" size={26}/></span>
+        <div style={{display:'flex',gap:-8,justifyContent:'center',marginTop:14}}>
+          {['S','T','Y'].map((a,k)=>(<span key={a} style={{width:30,height:30,borderRadius:'50%',background:['#EF6F5E','#4DA3C4','#4C9A6B'][k],color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:12,marginLeft:k?-8:0,border:'2px solid var(--navy-800)'}}>{a}</span>))}
+        </div>
+        <div style={{fontSize:'var(--text-xs)',color:'var(--navy-100)',marginTop:10}}>Synced across the whole team</div>
+      </div></GV> },
+    { tag:'You’re ready', title:'That’s the whole tour!',
+      body:'Open this anytime from the Guide button in the sidebar, the “?” on the home screen, or Settings → Replay guide. Have a blessed Sunday.',
+      visual:<GV tone="sunken"><div style={{textAlign:'center'}}>
+        <span style={{display:'inline-flex',width:60,height:60,borderRadius:'50%',background:'var(--leaf-500)',color:'#fff',alignItems:'center',justifyContent:'center',animation:'popIn 400ms cubic-bezier(0.34,1.56,0.64,1)'}}><Icon n="check" size={30}/></span>
+        <div style={{fontWeight:800,color:'var(--text-strong)',marginTop:12,fontSize:'var(--text-lg)'}}>You’re all set</div>
+      </div></GV> },
+  ];
+  const last=i===steps.length-1;
+  const s=steps[i];
+
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(2,26,43,.6)',backdropFilter:'blur(5px)',
+      display:'flex',alignItems:'center',justifyContent:'center',padding:'var(--space-4)',animation:'fadeIn 160ms ease'}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{width:'100%',maxWidth:440,maxHeight:'94dvh',overflowY:'auto',background:'var(--paper)',
+        borderRadius:'var(--radius-2xl)',boxShadow:'var(--shadow-lg)',animation:'guidePop 260ms cubic-bezier(0.22,1,0.36,1)'}}>
+        <div style={{padding:'var(--space-4) var(--space-4) 0',position:'relative'}}>
+          <button onClick={onClose} aria-label="Close" style={{position:'absolute',top:'var(--space-4)',right:'var(--space-4)',zIndex:2,
+            width:32,height:32,borderRadius:'50%',border:'none',background:'rgba(255,255,255,.18)',color:'var(--cream-50)',
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="x" size={16}/></button>
+          <div key={i} style={{animation:'fadeUp 240ms cubic-bezier(0.22,1,0.36,1)'}}>{s.visual}</div>
+        </div>
+        <div style={{padding:'var(--space-5)'}}>
+          <div key={'t'+i} style={{animation:'fadeUp 280ms cubic-bezier(0.22,1,0.36,1)'}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--link)'}}>{s.tag}</div>
+            <h2 style={{fontSize:'var(--text-xl)',fontWeight:800,color:'var(--text-strong)',letterSpacing:'-.01em',margin:'6px 0 8px'}}>{s.title}</h2>
+            <p style={{fontSize:'var(--text-sm)',color:'var(--text-body)',lineHeight:1.6,margin:0}}>{s.body}</p>
+          </div>
+
+          {/* progress dots */}
+          <div style={{display:'flex',gap:6,justifyContent:'center',margin:'18px 0'}}>
+            {steps.map((_,k)=>(<button key={k} onClick={()=>setI(k)} aria-label={`Step ${k+1}`} style={{
+              height:7,width:k===i?22:7,borderRadius:99,border:'none',cursor:'pointer',padding:0,
+              background:k===i?'var(--navy-700)':'var(--border-default)',transition:'width 220ms ease,background 220ms ease'}} />))}
+          </div>
+
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            {i>0
+              ? <Btn variant="ghost" size="sm" onClick={()=>setI(i-1)} iL={<Icon n="chevron-left" size={15}/>}>Back</Btn>
+              : <Btn variant="ghost" size="sm" onClick={onClose}>Skip</Btn>}
+            <span style={{flex:1}} />
+            <span style={{fontSize:'var(--text-xs)',color:'var(--text-subtle)',fontWeight:600}}>{i+1} / {steps.length}</span>
+            <Btn variant="primary" size="sm" onClick={()=>last?onClose():setI(i+1)}
+              iR={last?<Icon n="check" size={15}/>:<Icon n="chevron-right" size={15}/>}>{last?'Done':'Next'}</Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── NAV ── */
 const TABS=[
   {id:'dashboard',i:'layout-dashboard',l:'Dashboard'},
@@ -2590,7 +2750,7 @@ const TABS=[
 ];
 
 function Sidebar({ tab, onTab, count, t=s=>s, teacher='', cloud, alerts=0, onSearch, onOpenSettings, onSignOut,
-  theme='light', onToggleTheme, collapsed=false, onToggleCollapse }) {
+  theme='light', onToggleTheme, collapsed=false, onToggleCollapse, onOpenGuide }) {
   const [q,setQ]=useState('');
   const [tip,setTip]=useState(null); // {label,y} fixed-position tooltip when collapsed
   const showTip=(e,label)=>{ if(!collapsed) return; const r=e.currentTarget.getBoundingClientRect();
@@ -2646,6 +2806,13 @@ function Sidebar({ tab, onTab, count, t=s=>s, teacher='', cloud, alerts=0, onSea
           padding:'7px 11px',borderRadius:8,boxShadow:'0 8px 22px rgba(0,0,0,.45)',whiteSpace:'nowrap',
           pointerEvents:'none',animation:'fadeIn 120ms ease'}}>{tip.label}</div>
       )}
+
+      {/* Guide / help launcher */}
+      <button className="side-item" onClick={onOpenGuide} style={{flex:'none'}}
+        onMouseEnter={e=>showTip(e,t('Guide'))} onMouseLeave={hideTip}>
+        <span className="side-ic"><Icon n="help-circle" size={19} /></span>
+        {!collapsed && t('Guide')}
+      </button>
 
       {/* Theme: segmented control when expanded, single toggle button when collapsed */}
       {collapsed ? (
@@ -2922,6 +3089,11 @@ function App() {
   // Settings sheet (lifted so the sidebar can open it from any tab)
   const [showSettings,setShowSettings]=useState(false);
   const alertCount=students.filter(s=>absenceStreak(s.id,attendance)>=3).length;
+
+  // Guided tour — auto-opens on first visit, re-openable anytime.
+  const [showGuide,setShowGuide]=useState(()=>!load('fecmy_guide_seen',false));
+  const openGuide=()=>setShowGuide(true);
+  const closeGuide=()=>{ setShowGuide(false); save('fecmy_guide_seen',true); };
   const [collapsed,setCollapsed]=useState(()=>load('fecmy_sidebar_collapsed',false));
   const toggleCollapse=()=>{ const v=!collapsed; setCollapsed(v); save('fecmy_sidebar_collapsed',v); };
 
@@ -2940,7 +3112,7 @@ function App() {
     dashboard:<Dashboard students={students} attendance={attendance} sessions={sessions} classes={classes}
       onNav={setTab} onReset={resetAll} onOpenClass={openClass} onSearch={doSearch}
       cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t}
-      teacher={teacher} setTeacher={saveTeacher} onOpenSettings={()=>setShowSettings(true)} />,
+      teacher={teacher} setTeacher={saveTeacher} onOpenSettings={()=>setShowSettings(true)} onOpenGuide={openGuide} />,
     classes:<Classes classes={classes} students={students} attendance={attendance} t={t}
       onAdd={d=>{saveCls([...classes,{...d,id:uid()}]);notify('Class created');}}
       onEdit={d=>{saveCls(classes.map(c=>c.id===d.id?d:c));notify('Class updated');}}
@@ -2991,7 +3163,7 @@ function App() {
         <Sidebar tab={tab} onTab={setTab} count={students.length} t={t}
           teacher={teacher} cloud={cloud} alerts={alertCount}
           onSearch={doSearch} onOpenSettings={()=>setShowSettings(true)} onSignOut={cloud.user?cloudApi.signOut:null}
-          theme={theme} onToggleTheme={toggleTheme} collapsed={collapsed} onToggleCollapse={toggleCollapse} />
+          theme={theme} onToggleTheme={toggleTheme} collapsed={collapsed} onToggleCollapse={toggleCollapse} onOpenGuide={openGuide} />
         <main style={{overflowY:'auto',minWidth:0,background:'var(--surface-app)'}}>
           <div key={tab} className="screen-enter">{screens[tab]}</div>
         </main>
@@ -3000,7 +3172,10 @@ function App() {
       <SettingsSheet open={showSettings} onClose={()=>setShowSettings(false)} onReset={resetAll}
         students={students} attendance={attendance} sessions={sessions}
         cloud={cloud} cloudApi={cloudApi} lang={lang} setLanguage={setLanguage} t={t}
-        teacher={teacher} setTeacher={saveTeacher} theme={theme} onToggleTheme={toggleTheme} />
+        teacher={teacher} setTeacher={saveTeacher} theme={theme} onToggleTheme={toggleTheme}
+        onOpenGuide={()=>{ setShowSettings(false); openGuide(); }} />
+
+      <GuideTour open={showGuide} onClose={closeGuide} t={t} />
 
       <Toast toast={toast} />
 
