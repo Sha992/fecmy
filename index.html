@@ -2022,7 +2022,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
       </div>
 
       {/* Roster — two columns on desktop */}
-      <div style={{padding:'0 var(--space-4)',display:'grid',gridTemplateColumns:isDesk?'1fr 1fr':'1fr',
+      <div style={{padding:'0 var(--space-4)',display:'grid',gridTemplateColumns:isDesk?'minmax(0,1fr) minmax(0,1fr)':'minmax(0,1fr)',
         columnGap:'var(--space-3)',alignItems:'start',alignContent:'start'}}>
         {classStudents.length===0 && <div style={{textAlign:'center',padding:'var(--space-8) 0',color:'var(--text-muted)',fontSize:'var(--text-sm)',gridColumn:'1/-1'}}>
           No students in this class yet. Add them from the Students tab.
@@ -2173,7 +2173,7 @@ function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
         </div>
       </div>
 
-      <div style={{padding:'0 var(--space-4)',display:'grid',gridTemplateColumns:isDesk?'1fr 1fr':'1fr',
+      <div style={{padding:'0 var(--space-4)',display:'grid',gridTemplateColumns:isDesk?'minmax(0,1fr) minmax(0,1fr)':'minmax(0,1fr)',
         columnGap:'var(--space-4)',alignItems:'start',alignContent:'start'}}>
         {sorted.length===0 && (
           <div style={{textAlign:'center',padding:'var(--space-7) 0',gridColumn:'1/-1'}}>
