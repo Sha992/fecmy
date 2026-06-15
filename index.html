@@ -2622,7 +2622,7 @@ function MiniRow({ name, tone='navy', pill, pillTone='leaf', call }) {
   </div>;
 }
 
-function GuideTour({ open, onClose, lang='en', t=s=>s }) {
+function GuideTour({ open, onClose, lang='en', setLanguage, t=s=>s }) {
   const [i,setI]=useState(0);
   useEffect(()=>{ if(open) setI(0); },[open]);
   if(!open) return null;
@@ -2718,6 +2718,16 @@ function GuideTour({ open, onClose, lang='en', t=s=>s }) {
       <div style={{width:'100%',maxWidth:440,maxHeight:'94dvh',overflowY:'auto',background:'var(--paper)',
         borderRadius:'var(--radius-2xl)',boxShadow:'var(--shadow-lg)',animation:'guidePop 260ms cubic-bezier(0.22,1,0.36,1)'}}>
         <div style={{padding:'var(--space-4) var(--space-4) 0',position:'relative'}}>
+          {/* Live language switch — one button showing the language you'll switch to */}
+          <button onClick={()=>setLanguage&&setLanguage(am?'en':'am')}
+            aria-label={am?'Switch to English':'Switch to Amharic'} title={am?'Switch to English':'ወደ አማርኛ ቀይር'}
+            style={{position:'absolute',top:'var(--space-4)',left:'var(--space-4)',zIndex:2,
+              display:'inline-flex',alignItems:'center',gap:6,padding:'6px 12px',borderRadius:999,cursor:'pointer',
+              background:'var(--paper)',border:'1px solid var(--border-soft)',boxShadow:'var(--shadow-sm)',
+              fontFamily:am?'var(--font-sans)':'var(--font-amharic, var(--font-sans))',
+              fontSize:12,fontWeight:800,color:'var(--text-strong)'}}>
+            <Icon n="globe" size={13} color="var(--text-muted)" />{am?'EN':'አማ'}
+          </button>
           <button onClick={onClose} aria-label="Close" style={{position:'absolute',top:'var(--space-4)',right:'var(--space-4)',zIndex:2,
             width:32,height:32,borderRadius:'50%',border:'none',background:'rgba(255,255,255,.18)',color:'var(--cream-50)',
             cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="x" size={16}/></button>
@@ -3188,7 +3198,7 @@ function App() {
         teacher={teacher} setTeacher={saveTeacher} theme={theme} onToggleTheme={toggleTheme}
         onOpenGuide={()=>{ setShowSettings(false); openGuide(); }} />
 
-      <GuideTour open={showGuide} onClose={closeGuide} lang={lang} t={t} />
+      <GuideTour open={showGuide} onClose={closeGuide} lang={lang} setLanguage={setLanguage} t={t} />
 
       <Toast toast={toast} />
 
