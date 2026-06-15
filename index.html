@@ -259,6 +259,7 @@ const AM={
   'Search students or parents…':'ተማሪ ወይም ወላጅ ፈልግ…','Plan':'እቅድ','Plan a lesson':'ትምህርት አቅድ',
   'Today’s classes':'የዛሬ ክፍሎች','Recent attendance':'የቅርብ ጊዜ መገኘት','Attendance trend':'የመገኘት አዝማሚያ','Next session':'ቀጣይ ትምህርት',
   'Guide':'መመሪያ','Replay guided tour':'መመሪያውን እንደገና አሳይ',
+  'Skip':'ዝለል','Back':'ተመለስ','Next':'ቀጣይ','Done':'ጨርስ',
 };
 function tr(lang,s){ return lang==='am' && AM[s] ? AM[s] : s; }
 
@@ -2621,78 +2622,90 @@ function MiniRow({ name, tone='navy', pill, pillTone='leaf', call }) {
   </div>;
 }
 
-function GuideTour({ open, onClose, t=s=>s }) {
+function GuideTour({ open, onClose, lang='en', t=s=>s }) {
   const [i,setI]=useState(0);
   useEffect(()=>{ if(open) setI(0); },[open]);
   if(!open) return null;
+  const am=lang==='am';
+  const L=(en,amh)=>am?amh:en; // inline EN/AM picker for tour copy
 
   const steps=[
-    { tag:'Welcome', title:'A simpler way to shepherd the class',
-      body:'This replaces the paper register. No more lost sheets, manual counting, or guessing who has drifted away — every Sunday is saved, shared with your team, and a tap away.',
+    { tag:L('Welcome','እንኳን ደህና መጡ'), title:L('A simpler way to shepherd the class','ክፍሉን ለመምራት ቀላሉ መንገድ'),
+      body:L('This replaces the paper register. No more lost sheets, manual counting, or guessing who has drifted away — every Sunday is saved, shared with your team, and a tap away.',
+             'ይህ የወረቀት መዝገብን ይተካል። ከእንግዲህ የጠፉ ወረቀቶች፣ በእጅ መቁጠር ወይም ማን እንደቀረ መገመት የለም — እያንዳንዱ እሁድ ይቀመጣል፣ ከቡድንዎ ጋር ይጋራል፣ በአንድ ጠቅታ ይገኛል።'),
       visual:<GV tone="navy" cross><div style={{textAlign:'center'}}>
         <Logo color="var(--cream-50)" size={46} style={{margin:'0 auto'}} />
-        <div style={{color:'var(--cream-50)',fontWeight:800,fontSize:'var(--text-lg)',marginTop:10}}>FECMY Children Ministry</div>
-        <div style={{color:'var(--navy-100)',fontSize:'var(--text-xs)',marginTop:4}}>Attendance · Care · Together</div>
+        <div style={{color:'var(--cream-50)',fontWeight:800,fontSize:'var(--text-lg)',marginTop:10}}>{L('FECMY Children Ministry','FECMY የልጆች አገልግሎት')}</div>
+        <div style={{color:'var(--navy-100)',fontSize:'var(--text-xs)',marginTop:4}}>{L('Attendance · Care · Together','መገኘት · እንክብካቤ · አንድነት')}</div>
       </div></GV> },
-    { tag:'Why it helps', title:'The problems it solves',
-      body:'Paper sheets get lost and are hard to add up. It’s easy to miss a child who quietly stopped coming. And only one person ever has the register. This fixes all three.',
+    { tag:L('Why it helps','ጥቅሙ'), title:L('The problems it solves','የሚፈታቸው ችግሮች'),
+      body:L('Paper sheets get lost and are hard to add up. It’s easy to miss a child who quietly stopped coming. And only one person ever has the register. This fixes all three.',
+             'የወረቀት መዝገቦች ይጠፋሉ፣ መደመርም ይከብዳል። በዝምታ መምጣት ያቆመ ልጅን ማስተዋል ይከብዳል። መዝገቡም በአንድ ሰው እጅ ብቻ ይሆናል። ይህ ሦስቱንም ይፈታል።'),
       visual:<GV tone="sunken"><div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {[['Never lose a Sunday again','check'],['Spot kids who’ve stopped coming','check'],['Shared live with every teacher','check']].map(([txt])=>(
+        {[L('Never lose a Sunday again','ከእንግዲህ አንድም እሁድ አይጠፋም'),L('Spot kids who’ve stopped coming','መምጣት ያቆሙ ልጆችን ይለዩ'),L('Shared live with every teacher','ከሁሉም መምህራን ጋር በቀጥታ ይጋራል')].map((txt)=>(
           <div key={txt} style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',padding:'10px 12px'}}>
             <span style={{width:24,height:24,borderRadius:'50%',background:'var(--leaf-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon n="check" size={13}/></span>
             <span style={{fontSize:'var(--text-sm)',color:'var(--text-strong)',fontWeight:600}}>{txt}</span>
           </div>))}
       </div></GV> },
-    { tag:'Dashboard', title:'Your Sunday at a glance',
-      body:'See today’s class day, how many children have checked in, who needs a follow-up, upcoming birthdays, and the attendance trend — all on the home screen.',
-      visual:<GV tone="sunken"><div style={{display:'flex',gap:10}}><MiniStat v="49" l="Students" tone="navy"/><MiniStat v="86%" l="Attendance" tone="leaf"/></div></GV> },
-    { tag:'Attendance', title:'Check the children in',
-      body:'Pick the Sunday, then tap each child Present or Absent — or use “All present”. Add a first-time visitor on the spot, then Save. It even works with no internet.',
+    { tag:L('Dashboard','ዳሽቦርድ'), title:L('Your Sunday at a glance','እሁድዎን በአንድ እይታ'),
+      body:L('See today’s class day, how many children have checked in, who needs a follow-up, upcoming birthdays, and the attendance trend — all on the home screen.',
+             'የዛሬውን የክፍል ቀን፣ ስንት ልጆች እንደተመዘገቡ፣ ማን ክትትል እንደሚያስፈልገው፣ መጪ የልደት ቀናትንና የመገኘት አዝማሚያን — ሁሉንም በመነሻ ገጹ ላይ ይዩ።'),
+      visual:<GV tone="sunken"><div style={{display:'flex',gap:10}}><MiniStat v="49" l={L('Students','ተማሪዎች')} tone="navy"/><MiniStat v="86%" l={L('Attendance','መገኘት')} tone="leaf"/></div></GV> },
+    { tag:L('Attendance','መገኘት'), title:L('Check the children in','ልጆችን ይመዝግቡ'),
+      body:L('Pick the Sunday, then tap each child Present or Absent — or use “All present”. Add a first-time visitor on the spot, then Save. It even works with no internet.',
+             'እሁዱን ይምረጡ፣ ከዚያ እያንዳንዱን ልጅ ተገኝቷል ወይም ቀርቷል ብለው ይንኩ — ወይም “ሁሉም ተገኝተዋል” ይጠቀሙ። አዲስ እንግዳን ወዲያውኑ ጨምረው ያስቀምጡ። ኢንተርኔት ባይኖርም ይሰራል።'),
       visual:<GV tone="sunken"><div style={{display:'flex',flexDirection:'column',gap:8}}>
-        <MiniRow name="ሃዳ" tone="leaf" pill="Present" pillTone="leaf"/>
-        <MiniRow name="ሄአ" tone="coral" pill="Absent" pillTone="coral"/></div></GV> },
-    { tag:'Students', title:'Every child’s details',
-      body:'Tap a child to see their attendance history, parent’s phone (tap to call), age and notes. Add or edit anyone, and search by name or parent in seconds.',
+        <MiniRow name="ሃዳ" tone="leaf" pill={t('Present')} pillTone="leaf"/>
+        <MiniRow name="ሄአ" tone="coral" pill={t('Absent')} pillTone="coral"/></div></GV> },
+    { tag:L('Students','ተማሪዎች'), title:L('Every child’s details','የእያንዳንዱ ልጅ መረጃ'),
+      body:L('Tap a child to see their attendance history, parent’s phone (tap to call), age and notes. Add or edit anyone, and search by name or parent in seconds.',
+             'የልጁን የመገኘት ታሪክ፣ የወላጅ ስልክ (ለመደወል ይንኩ)፣ ዕድሜና ማስታወሻ ለማየት ልጁን ይንኩ። ማንኛውንም ይጨምሩ ወይም ያስተካክሉ፣ በስም ወይም በወላጅ በቅጽበት ይፈልጉ።'),
       visual:<GV tone="sunken"><div style={{display:'flex',flexDirection:'column',gap:8}}>
         <MiniRow name="ና" tone="sky" call/><MiniRow name="ቤ" tone="grape" call/></div></GV> },
-    { tag:'Classes & Sessions', title:'Groups and lesson plans',
-      body:'Classes hold your age groups and their teachers. Sessions is where you plan each week’s lesson — scripture, theme and activities — and see who planned what.',
+    { tag:L('Classes & Sessions','ክፍሎች እና ትምህርቶች'), title:L('Groups and lesson plans','ቡድኖችና የትምህርት እቅዶች'),
+      body:L('Classes hold your age groups and their teachers. Sessions is where you plan each week’s lesson — scripture, theme and activities — and see who planned what.',
+             'ክፍሎች የዕድሜ ቡድኖችዎንና መምህራኖቻቸውን ይይዛሉ። ትምህርቶች የእያንዳንዱን ሳምንት ትምህርት የሚያቅዱበት ነው — ጥቅስ፣ ጭብጥና ተግባራት — እንዲሁም ማን ምን እንዳቀደ ይታያል።'),
       visual:<GV tone="sunken"><div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
         <div style={{height:5,background:'var(--navy-600)'}}/>
         <div style={{padding:'12px 14px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div style={{fontWeight:800,color:'var(--text-strong)',fontSize:'var(--text-sm)'}}>Ages 10–14 class</div><span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:999,background:'var(--navy-100)',color:'#0A3956'}}>Ages 10–14</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div style={{fontWeight:800,color:'var(--text-strong)',fontSize:'var(--text-sm)'}}>{L('Ages 10–14 class','ዕድሜ 10–14 ክፍል')}</div><span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:999,background:'var(--navy-100)',color:'#0A3956'}}>{L('Ages 10–14','ዕድሜ 10–14')}</span></div>
           <div style={{height:7,borderRadius:4,background:'var(--surface-sunken)',marginTop:10,overflow:'hidden'}}><div style={{width:'64%',height:'100%',background:'var(--navy-600)'}}/></div>
         </div></div></GV> },
-    { tag:'Reports', title:'The whole term on one page',
-      body:'A full register — every child across every Sunday, with green/red marks and percentages. Print it or export to share with church leadership.',
+    { tag:L('Reports','ሪፖርቶች'), title:L('The whole term on one page','ሙሉ ጊዜውን በአንድ ገጽ'),
+      body:L('A full register — every child across every Sunday, with green/red marks and percentages. Print it or export to share with church leadership.',
+             'ሙሉ መዝገብ — እያንዳንዱ ልጅ በእያንዳንዱ እሁድ፣ በአረንጓዴ/ቀይ ምልክቶችና በመቶኛ። አትመው ወይም ወደ ውጭ አውጥተው ለቤተክርስቲያን አመራር ያጋሩ።'),
       visual:<GV tone="sunken"><div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',padding:'12px',boxShadow:'var(--shadow-xs)'}}>
         {[0,1,2].map(r=>(<div key={r} style={{display:'flex',alignItems:'center',gap:8,marginBottom:r<2?8:0}}>
           <div style={{height:7,width:54,borderRadius:3,background:'var(--ink-200)'}}/>
           {[0,1,2,3,4].map(ccc=>{const ok=(r+ccc)%4!==0;return <span key={ccc} style={{width:16,height:16,borderRadius:'50%',background:ok?'var(--leaf-500)':'var(--coral-100)',display:'flex',alignItems:'center',justifyContent:'center'}}>{ok?<Icon n="check" size={9} color="#fff"/>:<Icon n="x" size={8} color="#B23A2C"/>}</span>;})}
         </div>))}</div></GV> },
-    { tag:'Never lose a child', title:'3-Sunday absence alerts',
-      body:'If a child misses three Sundays in a row, the app flags them on the dashboard with a tap-to-call button — so you can reach out before anyone slips away.',
+    { tag:L('Never lose a child','አንድም ልጅ እንዳይቀር'), title:L('3-Sunday absence alerts','የ3 እሁድ መቅረት ማንቂያ'),
+      body:L('If a child misses three Sundays in a row, the app flags them on the dashboard with a tap-to-call button — so you can reach out before anyone slips away.',
+             'አንድ ልጅ ሦስት እሁዶችን በተከታታይ ቢቀር፣ መተግበሪያው በዳሽቦርዱ ላይ ለመደወል በሚያስችል ቁልፍ ያመለክታል — ማንም ሳይርቅ ቀድመው እንዲያገኙት።'),
       visual:<GV tone="sunken"><div style={{background:'var(--coral-100)',border:'1px solid rgba(239,111,94,.25)',borderRadius:'var(--radius-md)',padding:'12px 14px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,color:'#B23A2C',fontWeight:700,fontSize:'var(--text-sm)',marginBottom:10}}><Icon n="alert-circle" size={16}/>Absent 3 Sundays</div>
+        <div style={{display:'flex',alignItems:'center',gap:8,color:'#B23A2C',fontWeight:700,fontSize:'var(--text-sm)',marginBottom:10}}><Icon n="alert-circle" size={16}/>{L('Absent 3 Sundays','3 እሁድ ቀርቷል')}</div>
         <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper)',borderRadius:'var(--radius-md)',padding:'9px 11px'}}>
           <span style={{width:28,height:28,borderRadius:'50%',background:'var(--sky-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11}}>ና</span>
           <div style={{flex:1}}><div style={{height:8,width:'60%',borderRadius:4,background:'var(--ink-200)'}}/></div>
           <span style={{width:30,height:30,borderRadius:'50%',background:'var(--coral-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="phone" size={13}/></span>
         </div></div></GV> },
-    { tag:'Team sync', title:'One shared register for all teachers',
-      body:'Sign in once and every teacher sees the same live data on their own phone — mark a child present on one phone and it appears on the others. Works great offline too.',
+    { tag:L('Team sync','የቡድን ማመሳሰል'), title:L('One shared register for all teachers','ለሁሉም መምህራን አንድ የጋራ መዝገብ'),
+      body:L('Sign in once and every teacher sees the same live data on their own phone — mark a child present on one phone and it appears on the others. Works great offline too.',
+             'አንድ ጊዜ ይግቡ፣ እያንዳንዱ መምህር በራሱ ስልክ ላይ ተመሳሳዩን ቀጥታ መረጃ ያያል — በአንዱ ስልክ ላይ ልጅን ተገኝቷል ሲሉ በሌሎቹም ላይ ይታያል። ከመስመር ውጭም በጥሩ ሁኔታ ይሰራል።'),
       visual:<GV tone="navy"><div style={{textAlign:'center',color:'var(--cream-50)'}}>
         <span style={{display:'inline-flex',width:54,height:54,borderRadius:'var(--radius-lg)',background:'rgba(251,247,240,.12)',alignItems:'center',justifyContent:'center'}}><Icon n="cloud" size={26}/></span>
         <div style={{display:'flex',gap:-8,justifyContent:'center',marginTop:14}}>
           {['S','T','Y'].map((a,k)=>(<span key={a} style={{width:30,height:30,borderRadius:'50%',background:['#EF6F5E','#4DA3C4','#4C9A6B'][k],color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:12,marginLeft:k?-8:0,border:'2px solid var(--navy-800)'}}>{a}</span>))}
         </div>
-        <div style={{fontSize:'var(--text-xs)',color:'var(--navy-100)',marginTop:10}}>Synced across the whole team</div>
+        <div style={{fontSize:'var(--text-xs)',color:'var(--navy-100)',marginTop:10}}>{L('Synced across the whole team','ከመላው ቡድን ጋር ተመሳስሏል')}</div>
       </div></GV> },
-    { tag:'You’re ready', title:'That’s the whole tour!',
-      body:'Open this anytime from the Guide button in the sidebar, the “?” on the home screen, or Settings → Replay guide. Have a blessed Sunday.',
+    { tag:L('You’re ready','ዝግጁ ነዎት'), title:L('That’s the whole tour!','ጉብኝቱ ይሄው ነው!'),
+      body:L('Open this anytime from the Guide button in the sidebar, the “?” on the home screen, or Settings → Replay guide. Have a blessed Sunday.',
+             'ይህንን በማንኛውም ጊዜ ከጎን አሞሌው የመመሪያ ቁልፍ፣ በመነሻ ገጹ ላይ ካለው “?” ወይም ከቅንብሮች → መመሪያውን እንደገና አሳይ ይክፈቱት። የተባረከ እሁድ ይሁንልዎ።'),
       visual:<GV tone="sunken"><div style={{textAlign:'center'}}>
         <span style={{display:'inline-flex',width:60,height:60,borderRadius:'50%',background:'var(--leaf-500)',color:'#fff',alignItems:'center',justifyContent:'center',animation:'popIn 400ms cubic-bezier(0.34,1.56,0.64,1)'}}><Icon n="check" size={30}/></span>
-        <div style={{fontWeight:800,color:'var(--text-strong)',marginTop:12,fontSize:'var(--text-lg)'}}>You’re all set</div>
+        <div style={{fontWeight:800,color:'var(--text-strong)',marginTop:12,fontSize:'var(--text-lg)'}}>{L('You’re all set','ሁሉም ተዘጋጅቷል')}</div>
       </div></GV> },
   ];
   const last=i===steps.length-1;
@@ -2726,12 +2739,12 @@ function GuideTour({ open, onClose, t=s=>s }) {
 
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             {i>0
-              ? <Btn variant="ghost" size="sm" onClick={()=>setI(i-1)} iL={<Icon n="chevron-left" size={15}/>}>Back</Btn>
-              : <Btn variant="ghost" size="sm" onClick={onClose}>Skip</Btn>}
+              ? <Btn variant="ghost" size="sm" onClick={()=>setI(i-1)} iL={<Icon n="chevron-left" size={15}/>}>{t('Back')}</Btn>
+              : <Btn variant="ghost" size="sm" onClick={onClose}>{t('Skip')}</Btn>}
             <span style={{flex:1}} />
             <span style={{fontSize:'var(--text-xs)',color:'var(--text-subtle)',fontWeight:600}}>{i+1} / {steps.length}</span>
             <Btn variant="primary" size="sm" onClick={()=>last?onClose():setI(i+1)}
-              iR={last?<Icon n="check" size={15}/>:<Icon n="chevron-right" size={15}/>}>{last?'Done':'Next'}</Btn>
+              iR={last?<Icon n="check" size={15}/>:<Icon n="chevron-right" size={15}/>}>{last?t('Done'):t('Next')}</Btn>
           </div>
         </div>
       </div>
@@ -3175,7 +3188,7 @@ function App() {
         teacher={teacher} setTeacher={saveTeacher} theme={theme} onToggleTheme={toggleTheme}
         onOpenGuide={()=>{ setShowSettings(false); openGuide(); }} />
 
-      <GuideTour open={showGuide} onClose={closeGuide} t={t} />
+      <GuideTour open={showGuide} onClose={closeGuide} lang={lang} t={t} />
 
       <Toast toast={toast} />
 
