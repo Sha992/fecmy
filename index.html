@@ -155,6 +155,7 @@ input,textarea,select,button{font-family:var(--font-sans)}
 @keyframes toastIn{from{transform:translate(-50%,16px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 @keyframes confettiFall{0%{opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:.9}}
 @keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes donutGrow{from{stroke-dasharray:0 9999}}
 @keyframes navDot{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .screen-enter{animation:fadeUp 240ms cubic-bezier(0.22,1,0.36,1)}
 .stagger{animation:fadeUp 320ms cubic-bezier(0.22,1,0.36,1) both}
@@ -164,6 +165,38 @@ input,textarea,select,button{font-family:var(--font-sans)}
 .nav-btn.active svg{animation:iconPop 380ms cubic-bezier(0.34,1.56,0.64,1)}
 .side-count,.side-dot{animation:softPulse 2.4s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* ── Rich text editor ── */
+.rte{border:1.5px solid var(--border-default);border-radius:var(--radius-md);overflow:hidden;background:var(--paper)}
+.rte:focus-within{border-color:var(--navy-600)}
+.rte-toolbar{display:flex;align-items:center;gap:2px;padding:6px;border-bottom:1px solid var(--border-soft);
+  background:var(--surface-sunken);overflow-x:auto;scrollbar-width:thin}
+.rte-toolbar::-webkit-scrollbar{height:0}
+.rte-btn{min-width:32px;height:32px;padding:0 6px;border-radius:8px;border:none;background:transparent;color:var(--text-body);
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;flex-shrink:0;
+  font-family:var(--font-sans);font-size:var(--text-sm);font-weight:600;transition:background 120ms,color 120ms}
+.rte-btn:hover{background:var(--paper);color:var(--text-strong)}
+.rte-btn.on{background:var(--navy-800);color:var(--cream-50)}
+.rte-sep{width:1px;height:20px;background:var(--border-default);margin:0 4px;flex-shrink:0}
+.rte-style{position:relative;flex-shrink:0}
+.rte-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:20;background:var(--paper);border:1px solid var(--border-soft);
+  border-radius:var(--radius-md);box-shadow:var(--shadow-md);overflow:hidden;min-width:160px;padding:4px}
+.rte-menu button{display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:transparent;cursor:pointer;
+  border-radius:8px;font-family:var(--font-sans);color:var(--text-strong)}
+.rte-menu button:hover{background:var(--surface-sunken)}
+.rte-area{min-height:170px;max-height:46vh;overflow-y:auto;padding:14px 16px;outline:none;
+  font-size:var(--text-sm);color:var(--text-body);line-height:1.6;-webkit-overflow-scrolling:touch}
+.rte-area.is-empty:before{content:attr(data-ph);color:var(--text-subtle);pointer-events:none}
+/* shared typography for editor + rendered content */
+.rte-area,.rte-content{word-break:break-word}
+.rte-area h2,.rte-content h2{font-size:var(--text-lg);font-weight:800;color:var(--text-strong);margin:12px 0 4px;line-height:1.25}
+.rte-area h3,.rte-content h3{font-size:var(--text-md);font-weight:800;color:var(--text-brand);margin:10px 0 3px}
+.rte-area ul,.rte-content ul,.rte-area ol,.rte-content ol{padding-left:22px;margin:6px 0}
+.rte-area li,.rte-content li{margin:3px 0;line-height:1.55}
+.rte-area blockquote,.rte-content blockquote{border-left:3px solid var(--border-default);padding-left:12px;
+  color:var(--text-muted);margin:8px 0;font-style:italic}
+.rte-area a,.rte-content a{color:var(--link);text-decoration:underline}
+.rte-area p,.rte-content p{margin:5px 0}
+.rte-content{font-size:var(--text-sm);color:var(--text-body);line-height:1.6}
 @media print{
   body *{visibility:hidden}
   .print-area,.print-area *{visibility:visible}
@@ -436,6 +469,16 @@ const ICONS = {
   'menu':'M3 12h18M3 6h18M3 18h18',
   'help-circle':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3M12 17h.01',
   'compass':'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.2 7.8l-2.9 6.4-6.4 2.9 2.9-6.4 6.4-2.9z',
+  'bold':'M7 5h7a4 4 0 0 1 0 8H7zM7 13h8a4 4 0 0 1 0 8H7z',
+  'italic':'M19 5h-7M13 19H6M15 5 11 19',
+  'underline':'M7 5v6a5 5 0 0 0 10 0V5M5 21h14',
+  'strikethrough':'M5 12h14M16 7a4 4 0 0 0-4-3H9.5a3.5 3.5 0 0 0-1 6.8M8 17a4 4 0 0 0 4 3h1.5a3.5 3.5 0 0 0 1-6.8',
+  'list-bullet':'M9 6h12M9 12h12M9 18h12M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  'list-ordered':'M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-1.5 2-2.5S5 14 4 14.6',
+  'link2':'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5',
+  'quote':'M6 17h3l2-4V7H5v6h3zM14 17h3l2-4V7h-6v6h3z',
+  'arrow-up-right':'M7 17 17 7M8 7h9v9',
+  'flame':'M12 22a7 7 0 0 0 7-7c0-3-2-5-3-7-1.5 1-2 2-2 3 0-2-1-4-3-6-.5 3-2 4-3 6s-3 4-3 7a7 7 0 0 0 7 4z',
 };
 
 function Icon({ n, size=20, color, style={} }) {
@@ -820,31 +863,125 @@ function NextSessionCard({ upcoming }) {
   );
 }
 
-function TrendCard({ recordedKeys, rateOf, height=110, fill }) {
+function TrendCard({ recordedKeys, rateOf, attendance, height=110, fill }) {
+  const [hover,setHover]=useState(null);
+  const bars=recordedKeys.slice(0,8).reverse();
   return (
     <div style={fill?{display:'flex',flexDirection:'column',height:'100%'}:undefined}>
       <SectionLabel>Attendance trend</SectionLabel>
       <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
         borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
-        flex:fill?1:'none',display:'flex',alignItems:'flex-end'}}>
+        flex:fill?1:'none',display:'flex',alignItems:'flex-end',position:'relative'}}>
+        {hover!==null && (()=>{ const k=bars[hover]; const r=attendance&&attendance[k]||{};
+          const p=Object.values(r).filter(Boolean).length, tot=Object.keys(r).length;
+          return <div style={{position:'absolute',top:8,left:'50%',transform:'translateX(-50%)',zIndex:5,
+            background:'var(--navy-900)',color:'var(--cream-50)',borderRadius:8,padding:'7px 11px',fontSize:11,
+            fontWeight:600,whiteSpace:'nowrap',boxShadow:'var(--shadow-md)',pointerEvents:'none'}}>
+            {fmtShort(k)} · {p}/{tot} present · {rateOf(k)}%</div>; })()}
         <div style={{display:'flex',alignItems:'flex-end',gap:8,height,width:'100%'}}>
-          {recordedKeys.slice(0,8).reverse().map((k,i,arr)=>{
+          {bars.map((k,i,arr)=>{
             const r=rateOf(k);
-            const isLast=i===arr.length-1;
+            const isLast=i===arr.length-1, on=hover===i;
             return (
-              <div key={k} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:5,height:'100%',justifyContent:'flex-end'}}>
-                <span style={{fontSize:10,fontWeight:800,color:isLast?'var(--navy-800)':'var(--text-muted)'}}>{r}%</span>
+              <div key={k} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}
+                style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:5,height:'100%',justifyContent:'flex-end',cursor:'pointer'}}>
+                <span style={{fontSize:10,fontWeight:800,color:isLast?'var(--text-brand)':'var(--text-muted)'}}>{r}%</span>
                 <div style={{width:'100%',maxWidth:34,height:`${Math.max(r,3)/100*(height-34)}px`,
                   background:isLast?'var(--navy-800)':r>=80?'var(--leaf-500)':r>=60?'var(--sky-500)':'var(--coral-500)',
                   borderRadius:'6px 6px 2px 2px',transformOrigin:'bottom',
                   animation:`barGrow 500ms ${i*70}ms cubic-bezier(0.22,1,0.36,1) both`,
-                  opacity:isLast?1:.85}} />
+                  boxShadow:on?'0 0 0 3px var(--navy-100)':'none',opacity:on?1:(isLast?1:.85),
+                  transition:'box-shadow 150ms ease,opacity 150ms ease'}} />
                 <span style={{fontSize:9,color:'var(--text-subtle)',fontWeight:600,whiteSpace:'nowrap'}}>{fmtShort(k)}</span>
               </div>
             );
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Animated SVG donut with a center label. segments: [{value,color}]
+function Donut({ segments, size=150, thickness=18, center, sub }) {
+  const total=segments.reduce((a,s)=>a+s.value,0)||1;
+  const r=(size-thickness)/2, C=2*Math.PI*r; let off=0;
+  return (
+    <div style={{position:'relative',width:size,height:size,flexShrink:0}}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{transform:'rotate(-90deg)'}}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-sunken)" strokeWidth={thickness} />
+        {segments.filter(s=>s.value>0).map((s,i)=>{
+          const len=(s.value/total)*C; const el=(
+            <circle key={i} cx={size/2} cy={size/2} r={r} fill="none" stroke={s.color} strokeWidth={thickness}
+              strokeDasharray={`${len} ${C-len}`} strokeDashoffset={-off} strokeLinecap="butt"
+              style={{animation:`donutGrow 700ms ${i*120}ms cubic-bezier(0.22,1,0.36,1) both`}} />);
+          off+=len; return el;
+        })}
+      </svg>
+      <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
+        <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-strong)',lineHeight:1,letterSpacing:'-.02em'}}>{center}</div>
+        {sub && <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4,fontWeight:600}}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+function AttendanceDonutCard({ present, absent, unmarked, total, dateLabel, onNav }) {
+  const rate=total?Math.round(present/total*100):0;
+  const segs=[{value:present,color:'var(--leaf-500)'},{value:absent,color:'var(--coral-500)'},{value:unmarked,color:'var(--ink-200)'}];
+  const legend=[['Present',present,'var(--leaf-500)'],['Absent',absent,'var(--coral-500)'],['Unmarked',unmarked,'var(--ink-300)']];
+  return (
+    <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-lg)',
+      padding:'var(--space-5)',boxShadow:'var(--shadow-xs)',height:'100%'}}>
+      <SectionLabel action={<button onClick={()=>onNav&&onNav('attendance')} aria-label="Open attendance"
+        style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',display:'flex'}}><Icon n="arrow-up-right" size={15}/></button>}>
+        Attendance overview · {dateLabel}
+      </SectionLabel>
+      <div style={{display:'flex',alignItems:'center',gap:'var(--space-5)',flexWrap:'wrap'}}>
+        <Donut segments={segs} center={`${rate}%`} sub={`${present}/${total}`} />
+        <div style={{flex:1,minWidth:120,display:'flex',flexDirection:'column',gap:10}}>
+          {legend.map(([lbl,v,col])=>(
+            <div key={lbl} style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{width:10,height:10,borderRadius:3,background:col,flexShrink:0}} />
+              <span style={{fontSize:'var(--text-sm)',color:'var(--text-body)',flex:1}}>{lbl}</span>
+              <span style={{fontSize:'var(--text-sm)',fontWeight:800,color:'var(--text-strong)',fontVariantNumeric:'tabular-nums'}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClassLeaderboardCard({ classStats, onOpenClass }) {
+  const rated=classStats.filter(c=>c.rate!==null);
+  const best=rated[0], worst=rated.length>1?rated[rated.length-1]:null;
+  return (
+    <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-lg)',
+      padding:'var(--space-5)',boxShadow:'var(--shadow-xs)',height:'100%',display:'flex',flexDirection:'column'}}>
+      <SectionLabel>Class attendance · last 8 Sundays</SectionLabel>
+      <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)',flex:1}}>
+        {classStats.map(({c,rate,count})=>(
+          <div key={c.id} onClick={()=>onOpenClass&&onOpenClass(c.id)} style={{cursor:'pointer'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+              <span style={{display:'flex',alignItems:'center',gap:7,fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)'}}>
+                <span style={{width:9,height:9,borderRadius:'50%',background:`var(--${c.tone}-500)`}} />{className(c)}
+                <span style={{color:'var(--text-subtle)',fontWeight:500}}>· {count}</span>
+              </span>
+              <span style={{fontSize:'var(--text-sm)',fontWeight:800,color:'var(--text-strong)'}}>{rate===null?'—':rate+'%'}</span>
+            </div>
+            <div style={{height:8,borderRadius:'var(--radius-pill)',background:'var(--surface-sunken)',overflow:'hidden'}}>
+              <div style={{width:(rate||0)+'%',height:'100%',background:`var(--${c.tone}-500)`,borderRadius:'var(--radius-pill)',
+                transition:'width 600ms cubic-bezier(0.22,1,0.36,1)'}} />
+            </div>
+          </div>
+        ))}
+      </div>
+      {best && (
+        <div style={{fontSize:'var(--text-xs)',color:'var(--text-muted)',marginTop:'var(--space-4)',lineHeight:1.55}}>
+          <b style={{color:'var(--text-strong)'}}>{className(best.c)}</b> has the strongest attendance{worst&&<> · <b style={{color:'var(--text-strong)'}}>{className(worst.c)}</b> needs the most encouragement</>}.
+        </div>
+      )}
     </div>
   );
 }
@@ -1015,6 +1152,18 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
     ? `${present} checked in ${isSunday?'today':'on '+fmtShort(today)}`
     : (isSunday?'No attendance yet today':isUpcoming?`Sunday ${fmtShort(today)} coming up`:`Sunday ${fmtShort(today)} not recorded yet`);
 
+  // Donut (this class-day) + per-class attendance leaderboard over recent Sundays
+  const dAbsent = students.filter(s=>todayAtt[s.id]===false).length;
+  const dUnmarked = Math.max(0, students.length - present - dAbsent);
+  const donutDate = isSunday?'today':fmtShort(today);
+  const classStats = classes.map(c=>{
+    const ids=students.filter(s=>s.classId===c.id).map(s=>s.id);
+    let pres=0, mk=0;
+    recordedKeys.slice(0,8).forEach(k=>{ const r=attendance[k]||{}; ids.forEach(id=>{ if(id in r){ mk++; if(r[id]===true) pres++; } }); });
+    return { c, count:ids.length, rate: mk?Math.round(pres/mk*100):null };
+  }).sort((a,b)=>(b.rate??-1)-(a.rate??-1));
+  const hasClassData = classStats.some(c=>c.rate!==null);
+
   /* ── Desktop dashboard ── */
   if(isDesk) return (
     <div className="page" style={{maxWidth:1320,margin:'0 auto',padding:'28px 36px 44px',
@@ -1050,8 +1199,8 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'} />
       </div>
 
-      {/* Featured row: Sunday CTA card + trend chart */}
-      <div style={{display:'grid',gridTemplateColumns:recordedKeys.length>=2?'1.05fr 1fr':'1fr',gap:'var(--space-4)',alignItems:'stretch'}}>
+      {/* Featured row: Sunday CTA card + attendance donut */}
+      <div style={{display:'grid',gridTemplateColumns:(marked>0||students.length>0)?'1.05fr 1fr':'1fr',gap:'var(--space-4)',alignItems:'stretch'}}>
         <div style={{background:'var(--navy-800)',borderRadius:'var(--radius-xl)',padding:'var(--space-6)',
           color:'var(--cream-50)',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'center',minHeight:200,
           backgroundImage:'radial-gradient(110% 140% at 100% 0%,rgba(143,178,198,.22),transparent 55%)'}}>
@@ -1077,8 +1226,16 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
             </div>
           </div>
         </div>
-        {recordedKeys.length>=2 && <TrendCard recordedKeys={recordedKeys} rateOf={rateOf} height={150} fill />}
+        {students.length>0 && <AttendanceDonutCard present={present} absent={dAbsent} unmarked={dUnmarked} total={students.length} dateLabel={donutDate} onNav={onNav} />}
       </div>
+
+      {/* Insight row: class leaderboard + interactive trend */}
+      {(hasClassData || recordedKeys.length>=2) && (
+        <div style={{display:'grid',gridTemplateColumns:hasClassData&&recordedKeys.length>=2?'1fr 1fr':'1fr',gap:'var(--space-4)',alignItems:'stretch'}}>
+          {hasClassData && <ClassLeaderboardCard classStats={classStats} onOpenClass={onOpenClass} />}
+          {recordedKeys.length>=2 && <TrendCard recordedKeys={recordedKeys} rateOf={rateOf} attendance={attendance} height={150} fill />}
+        </div>
+      )}
 
       {/* Main: classes + right rail */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 350px',gap:'var(--space-4)',alignItems:'start'}}>
@@ -1168,9 +1325,13 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
 
         {showChecklist && <ChecklistCard steps={steps} onNav={onNav} />}
 
+        {students.length>0 && <AttendanceDonutCard present={present} absent={dAbsent} unmarked={dUnmarked} total={students.length} dateLabel={donutDate} onNav={onNav} />}
+
         {classes.length>0 && students.length>0 &&
           <ClassesOverview classes={classes} students={students} todayAtt={todayAtt}
             onOpenClass={onOpenClass} onNav={onNav} />}
+
+        {hasClassData && <ClassLeaderboardCard classStats={classStats} onOpenClass={onOpenClass} />}
 
         {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
 
@@ -1180,7 +1341,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
 
         {upcoming && <NextSessionCard upcoming={upcoming} />}
 
-        {recordedKeys.length>=2 && <TrendCard recordedKeys={recordedKeys} rateOf={rateOf} />}
+        {recordedKeys.length>=2 && <TrendCard recordedKeys={recordedKeys} rateOf={rateOf} attendance={attendance} />}
 
         {recentKeys.length>0 && <RecentCard recentKeys={recentKeys} attendance={attendance} onNav={onNav} />}
 
@@ -2069,6 +2230,90 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
 /* Renders plain text the way it was typed: line breaks kept, plus light
    formatting — "# Heading", "- bullet", "1. numbered", "**bold**", and
    short "Label:" lines become subheads. Planning notes, not a word processor. */
+/* ── Rich text helpers + editor ── */
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function inlineMd(s){ return escHtml(s).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>'); }
+// Light sanitiser for stored HTML (content is from signed-in teachers, but be safe).
+function sanitizeHtml(html){
+  if(!html) return '';
+  return String(html)
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'')
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*\/?>/gi,'')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,'')
+    .replace(/(href|src)\s*=\s*(["'])\s*javascript:[^"']*\2/gi,'$1="#"');
+}
+// Convert legacy plain-text notes to editable HTML (bullets, kept numbers, headings).
+function plainToHtml(text){
+  if(!text) return '';
+  const lines=String(text).split('\n'); const out=[]; let inList=false;
+  const close=()=>{ if(inList){ out.push('</ul>'); inList=false; } };
+  for(const raw of lines){
+    const line=raw.trim();
+    const mBul=line.match(/^[-•*]\s+(.*)/);
+    const mHead=line.match(/^#{1,3}\s+(.*)/);
+    const mNum=/^\d+[.)]\s+/.test(line);
+    if(mBul){ if(!inList){ out.push('<ul>'); inList=true; } out.push('<li>'+inlineMd(mBul[1])+'</li>'); continue; }
+    close();
+    if(!line) continue;
+    if(mHead){ out.push('<h3>'+inlineMd(mHead[1])+'</h3>'); continue; }
+    if(mNum){ out.push('<p><strong>'+inlineMd(line)+'</strong></p>'); continue; }
+    if(/^[^.!?]{2,48}:$/.test(line)){ out.push('<h3>'+escHtml(line)+'</h3>'); continue; }
+    out.push('<p>'+inlineMd(line)+'</p>');
+  }
+  close();
+  return out.join('');
+}
+
+function RichEditor({ html, onChange, placeholder='', templates }) {
+  const ref=useRef(null);
+  const [styleOpen,setStyleOpen]=useState(false);
+  const checkEmpty=()=>{ const el=ref.current; if(!el) return;
+    el.classList.toggle('is-empty',(el.textContent||'').trim()==='' && !el.querySelector('img,li,hr')); };
+  useEffect(()=>{ if(ref.current){ ref.current.innerHTML=html||''; checkEmpty(); } },[]); // init once (keyed remount per session)
+  const emit=()=>{ const el=ref.current; if(!el) return; checkEmpty(); onChange(el.innerHTML, el.innerText); };
+  const cmd=(c,v)=>{ ref.current&&ref.current.focus(); try{document.execCommand(c,false,v);}catch{} emit(); };
+  const setBlock=tag=>{ ref.current&&ref.current.focus(); try{document.execCommand('formatBlock',false,tag);}catch{} setStyleOpen(false); emit(); };
+  const addLink=()=>{ const url=prompt('Link address (https://…)'); if(url) cmd('createLink',/^https?:\/\//i.test(url)?url:'https://'+url); };
+  const insertTpl=body=>{ ref.current&&ref.current.focus(); try{document.execCommand('insertHTML',false,plainToHtml(body));}catch{} emit(); };
+  const Tb=({c,v,icon,label})=> <button type="button" className="rte-btn" title={label} aria-label={label}
+    onMouseDown={e=>e.preventDefault()} onClick={()=>cmd(c,v)}>{icon}</button>;
+  return (
+    <div className="rte">
+      <div className="rte-toolbar">
+        <div className="rte-style">
+          <button type="button" className="rte-btn" style={{fontWeight:700}} onMouseDown={e=>e.preventDefault()} onClick={()=>setStyleOpen(o=>!o)}>
+            Style <Icon n="chevron-down" size={13}/>
+          </button>
+          {styleOpen && <div className="rte-menu">
+            <button onMouseDown={e=>e.preventDefault()} onClick={()=>setBlock('P')}>Normal text</button>
+            <button onMouseDown={e=>e.preventDefault()} onClick={()=>setBlock('H2')} style={{fontWeight:800,fontSize:'1.05rem'}}>Title</button>
+            <button onMouseDown={e=>e.preventDefault()} onClick={()=>setBlock('H3')} style={{fontWeight:800,color:'var(--text-brand)'}}>Heading</button>
+            <button onMouseDown={e=>e.preventDefault()} onClick={()=>setBlock('BLOCKQUOTE')} style={{fontStyle:'italic',color:'var(--text-muted)'}}>Quote</button>
+          </div>}
+        </div>
+        <span className="rte-sep"/>
+        <Tb c="bold" icon={<Icon n="bold" size={15}/>} label="Bold"/>
+        <Tb c="italic" icon={<Icon n="italic" size={15}/>} label="Italic"/>
+        <Tb c="underline" icon={<Icon n="underline" size={15}/>} label="Underline"/>
+        <Tb c="strikeThrough" icon={<Icon n="strikethrough" size={15}/>} label="Strikethrough"/>
+        <span className="rte-sep"/>
+        <Tb c="insertUnorderedList" icon={<Icon n="list-bullet" size={16}/>} label="Bulleted list"/>
+        <Tb c="insertOrderedList" icon={<Icon n="list-ordered" size={16}/>} label="Numbered list"/>
+        <button type="button" className="rte-btn" title="Link" aria-label="Link" onMouseDown={e=>e.preventDefault()} onClick={addLink}><Icon n="link2" size={15}/></button>
+      </div>
+      <div ref={ref} className="rte-area is-empty" contentEditable suppressContentEditableWarning
+        data-ph={placeholder} onInput={emit} onBlur={emit} />
+      {templates && <div style={{display:'flex',gap:6,flexWrap:'wrap',padding:'8px',borderTop:'1px solid var(--border-soft)',background:'var(--surface-sunken)'}}>
+        {templates.map(([label,body])=>(
+          <button key={label} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>insertTpl(body)}
+            style={{padding:'5px 11px',borderRadius:'var(--radius-pill)',border:'1px solid var(--border-default)',
+            background:'var(--paper)',cursor:'pointer',fontFamily:'var(--font-sans)',fontSize:11,fontWeight:700,color:'var(--text-brand)'}}>+ {label}</button>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
 function RichText({ text, size='var(--text-sm)' }) {
   const bold=(line,k)=>line.split(/(\*\*[^*]+\*\*)/g).map((seg,i)=>
     /^\*\*[^*]+\*\*$/.test(seg)
@@ -2088,15 +2333,19 @@ function RichText({ text, size='var(--text-sm)' }) {
     const mBul=line.match(/^[-•*]\s+(.*)/);
     const mNum=line.match(/^\d+[.)]\s+(.*)/);
     const mHead=line.match(/^#{1,3}\s+(.*)/);
-    if(mBul||mNum){
-      const type=mBul?'ul':'ol';
-      if(listType&&listType!==type) flush();
-      listType=type; list=list||[];
-      list.push(<li key={i} style={{fontSize:size,color:'var(--text-body)',lineHeight:1.55}}>{bold((mBul||mNum)[1],i)}</li>);
+    if(mBul){
+      if(listType&&listType!=='ul') flush();
+      listType='ul'; list=list||[];
+      list.push(<li key={i} style={{fontSize:size,color:'var(--text-body)',lineHeight:1.55}}>{bold(mBul[1],i)}</li>);
       return;
     }
     flush();
     if(!line){ out.push(<div key={i} style={{height:8}} />); return; }
+    // Keep the teacher's explicit numbers exactly as typed (don't auto-renumber).
+    if(mNum){
+      out.push(<div key={i} style={{fontSize:size,fontWeight:700,color:'var(--text-strong)',margin:'6px 0 2px'}}>{bold(line,i)}</div>);
+      return;
+    }
     if(mHead){
       out.push(<div key={i} style={{fontSize:size,fontWeight:800,color:'var(--text-strong)',
         margin:'6px 0 2px'}}>{bold(mHead[1],i)}</div>);
@@ -2142,9 +2391,11 @@ function SessionSheet({ open, session, onClose, onEdit }) {
             </div>
           </div>
         )}
-        {session.notes&&(
+        {(session.notesHtml||session.notes)&&(
           <div style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-lg)',padding:'var(--space-4)'}}>
-            <RichText text={session.notes} />
+            {session.notesHtml
+              ? <div className="rte-content" dangerouslySetInnerHTML={{__html:sanitizeHtml(session.notesHtml)}} />
+              : <RichText text={session.notes} />}
           </div>
         )}
       </div>
@@ -2252,7 +2503,7 @@ function Sessions({ sessions, onAdd, onEdit, onDelete, t=s=>s }) {
 
 function SessionForm({ open, session, onSave, onDelete, onClose }) {
   const sun=upcomingSundays(14);
-  const blank={title:'',scripture:'',theme:'',date:dk(sun[0]),notes:'',materials:''};
+  const blank={title:'',scripture:'',theme:'',date:dk(sun[0]),notes:'',notesHtml:'',materials:''};
   const [f,setF]=useState(blank);
   const [err,setErr]=useState({});
   const [confirm,setConfirm]=useState(false);
@@ -2260,7 +2511,8 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
   useEffect(()=>{
     if(open){
       setF(session?{title:session.title,scripture:session.scripture||'',theme:session.theme||'',
-        date:session.date,notes:session.notes||'',materials:(session.materials||[]).join(', ')}:blank);
+        date:session.date,notes:session.notes||'',notesHtml:session.notesHtml||plainToHtml(session.notes||''),
+        materials:(session.materials||[]).join(', ')}:blank);
       setErr({}); setConfirm(false);
     }
   },[open,session]);
@@ -2275,7 +2527,7 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
   const go=()=>{
     if(!f.title.trim()){setErr({title:'Title required'});return;}
     onSave({title:f.title.trim(),scripture:f.scripture.trim(),theme:f.theme.trim(),date:f.date,
-      notes:f.notes.trim(),materials:f.materials.split(',').map(m=>m.trim()).filter(Boolean)});
+      notes:(f.notes||'').trim(),notesHtml:f.notesHtml||'',materials:f.materials.split(',').map(m=>m.trim()).filter(Boolean)});
   };
 
   return (
@@ -2307,22 +2559,14 @@ function SessionForm({ open, session, onSave, onDelete, onClose }) {
           </select>
         </div>
         <div>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6,gap:8,flexWrap:'wrap'}}>
-            <label style={{fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)'}}>Notes / lesson plan</label>
-            <div style={{display:'flex',gap:6}}>
-              {[
-                ['Lesson outline','Opening prayer & welcome:\n\nBible story:\n- \n\nMemory verse:\n\nDiscussion questions:\n1. \n2. \n\nActivity / game:\n\nClosing prayer:'],
-                ['Story + craft','Bible story:\n- \n\nKey lesson:\n\nCraft / activity:\n- Materials: \n- Steps: \n\nMemory verse:'],
-              ].map(([label,body])=>(
-                <button key={label} type="button" onClick={()=>setF(p=>({...p,notes:p.notes.trim()?p.notes+'\n\n'+body:body}))}
-                  style={{padding:'5px 11px',borderRadius:'var(--radius-pill)',border:'1px solid var(--border-default)',
-                    background:'var(--surface-sunken)',cursor:'pointer',fontFamily:'var(--font-sans)',
-                    fontSize:11,fontWeight:700,color:'var(--text-brand)'}}>+ {label}</button>
-              ))}
-            </div>
-          </div>
-          <Input placeholder="Key points, discussion questions, activities…" value={f.notes} onChange={set('notes')} multi rows={7}
-            hint="Press Enter for new lines — they're kept. Start lines with “-” for bullets, “1.” for numbered steps, end a short line with “:” for a section heading." />
+          <label style={{display:'block',fontSize:'var(--text-sm)',fontWeight:600,color:'var(--text-strong)',marginBottom:6}}>Notes / lesson plan</label>
+          <RichEditor key={session?session.id:'new'} html={session?(session.notesHtml||plainToHtml(session.notes||'')):''}
+            onChange={(htmlVal,plainVal)=>setF(p=>({...p,notesHtml:htmlVal,notes:plainVal}))}
+            placeholder="Key points, discussion questions, activities… Use the toolbar for headings, bold, and lists."
+            templates={[
+              ['Lesson outline','Opening prayer & welcome:\n\nBible story:\n- \n\nMemory verse:\n\nDiscussion questions:\n1. \n2. \n\nActivity / game:\n\nClosing prayer:'],
+              ['Story + craft','Bible story:\n- \n\nKey lesson:\n\nCraft / activity:\n- Materials: \n- Steps: \n\nMemory verse:'],
+            ]} />
         </div>
         <Input label="Materials needed" placeholder="Bible, worksheets, colored pencils…" value={f.materials} onChange={set('materials')} hint="Separate with commas" />
       </div>
