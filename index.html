@@ -13,19 +13,19 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root {
-  --navy-900:#021A2B;--navy-800:#03273F;--navy-700:#0A3956;--navy-600:#14506F;
-  --navy-500:#2E6A88;--navy-300:#8FB2C6;--navy-100:#D6E4ED;--navy-50:#EDF3F7;
-  --coral-500:#EF6F5E;--coral-100:#FCE0DB;
-  --leaf-500:#4C9A6B;--leaf-100:#DCEDE2;
+  --navy-900:#031A2E;--navy-800:#063048;--navy-700:#0C4775;--navy-600:#155F9C;
+  --navy-500:#2480C4;--navy-400:#3E9BDB;--navy-300:#7EB8DE;--navy-100:#D0E6F5;--navy-50:#EAF4FB;
+  --coral-500:#F4674F;--coral-100:#FCE0DB;
+  --leaf-500:#16B981;--leaf-100:#D3F6E7;
   --sky-500:#4DA3C4;--sky-100:#DBEEF4;
   --grape-500:#8E6FB0;--grape-100:#E9E2F1;
-  --cream-50:#FBF7F0;--cream-100:#F5EEE2;
+  --cream-50:#FCFAF5;--cream-100:#F7F2EA;
   --paper:#FFFFFF;
   --ink-900:#1C1A17;--ink-700:#44403A;--ink-500:#6E6960;--ink-400:#938D82;
   --ink-300:#C2BCB1;--ink-200:#E3DDD2;--ink-100:#EFEAE0;
-  --success-500:#3F9B6A;--success-100:#DCEDE2;
+  --success-500:#16B981;--success-100:#D3F6E7;
   --warning-500:#E0961F;--warning-100:#FBEBCB;
-  --danger-500:#D6534A;--danger-100:#FADEDB;
+  --danger-500:#EC4F44;--danger-100:#FADEDB;
   --surface-app:var(--cream-50);--surface-card:var(--paper);
   --surface-sunken:var(--cream-100);
   --text-strong:var(--ink-900);--text-body:var(--ink-700);
@@ -38,10 +38,10 @@
   --space-5:24px;--space-6:32px;--space-7:48px;--space-8:64px;
   --radius-sm:8px;--radius-md:12px;--radius-lg:16px;
   --radius-xl:20px;--radius-2xl:24px;--radius-pill:999px;
-  --shadow-xs:0 1px 2px rgba(3,39,63,.06);
-  --shadow-sm:0 2px 6px rgba(3,39,63,.08);
-  --shadow-md:0 6px 18px rgba(3,39,63,.10);
-  --shadow-lg:0 14px 34px rgba(3,39,63,.14);
+  --shadow-xs:0 1px 2px rgba(6,48,72,.06);
+  --shadow-sm:0 2px 6px rgba(6,48,72,.08);
+  --shadow-md:0 6px 18px rgba(6,48,72,.10);
+  --shadow-lg:0 14px 34px rgba(6,48,72,.14);
   /* themeable semantic accents (flip in dark) */
   --text-brand:var(--navy-800);   /* navy headings/numbers on light cards */
   --link:var(--navy-600);         /* small inline links */
@@ -57,7 +57,7 @@
   --border-soft:#243340;--border-default:#33485A;
   --shadow-xs:0 1px 2px rgba(0,0,0,.35);--shadow-sm:0 2px 8px rgba(0,0,0,.40);
   --shadow-md:0 6px 20px rgba(0,0,0,.46);--shadow-lg:0 16px 40px rgba(0,0,0,.55);
-  --text-brand:#CFE0EC;--link:#8FB2C6;--nav-active:#EAF2F8;
+  --text-brand:#CFE0EC;--link:#7EB8DE;--nav-active:#EAF2F8;
 }
 html{color-scheme:light}
 html[data-theme="dark"]{color-scheme:dark}
@@ -72,7 +72,7 @@ input,textarea,select,button{font-family:var(--font-sans)}
 .bottom-nav{
   position:fixed;bottom:0;left:0;right:0;background:var(--paper);
   border-top:1.5px solid var(--border-soft);display:flex;z-index:100;
-  padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -4px 16px rgba(3,39,63,.06);
+  padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -4px 16px rgba(6,48,72,.06);
 }
 .nav-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -90,9 +90,10 @@ input,textarea,select,button{font-family:var(--font-sans)}
   .desktop-sidebar{display:flex!important}
   .mobile-page-wrap{display:contents}
 }
-.desktop-sidebar{display:none;flex-direction:column;background:var(--navy-800);
-  padding:18px 16px;gap:14px;position:sticky;top:0;height:100vh;overflow:visible;z-index:30;
-  background-image:radial-gradient(120% 60% at 0% 0%,rgba(143,178,198,.10),transparent 60%)}
+/* same smooth single-hue blue family as the hero card */
+.desktop-sidebar{display:none;flex-direction:column;
+  background:linear-gradient(168deg,#13598C 0%,#0C426B 46%,#08324E 78%,#05273B 100%);
+  padding:18px 16px;gap:14px;position:sticky;top:0;height:100vh;overflow:visible;z-index:30}
 .side-search{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:var(--radius-md);
   background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);transition:border-color 150ms,background 150ms}
 .side-search:focus-within{border-color:rgba(143,178,198,.5);background:rgba(255,255,255,.10)}
@@ -106,7 +107,7 @@ input,textarea,select,button{font-family:var(--font-sans)}
 .side-item:hover{background:rgba(255,255,255,.07);color:var(--cream-50)}
 .side-item .side-ic{flex-shrink:0;display:flex;transition:transform 200ms cubic-bezier(0.34,1.56,0.64,1)}
 .side-item:hover .side-ic{transform:scale(1.12)}
-.side-item.on{background:var(--navy-700);color:var(--cream-50);font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,.22)}
+.side-item.on{background:rgba(255,255,255,.13);color:var(--cream-50);font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,.18)}
 .side-item.on::before{content:'';position:absolute;left:-16px;top:50%;transform:translateY(-50%);
   width:4px;height:22px;border-radius:0 4px 4px 0;background:var(--cream-50);animation:sideBar 240ms cubic-bezier(0.22,1,0.36,1)}
 @keyframes sideBar{from{height:0;opacity:0}to{height:22px;opacity:1}}
@@ -165,6 +166,29 @@ input,textarea,select,button{font-family:var(--font-sans)}
 .nav-btn.active svg{animation:iconPop 380ms cubic-bezier(0.34,1.56,0.64,1)}
 .side-count,.side-dot{animation:softPulse 2.4s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* ── Dashboard modern chrome — soft, airy cards w/ hover lift & ↗ affordance ── */
+.dash-card{background:var(--surface-card);border:1px solid var(--border-soft);border-radius:var(--radius-2xl);
+  box-shadow:var(--shadow-xs);transition:transform 240ms cubic-bezier(0.22,1,0.36,1),box-shadow 240ms ease,border-color 240ms ease}
+.dash-card.lift{cursor:pointer}
+.dash-card.lift:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--border-default)}
+.stat-card{position:relative;overflow:hidden}
+.delta-chip{display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:800;
+  padding:3px 9px 3px 6px;border-radius:var(--radius-pill);letter-spacing:.01em;line-height:1}
+.card-arrow{display:flex;width:32px;height:32px;border-radius:50%;border:1px solid var(--border-soft);
+  background:var(--surface-card);color:var(--text-muted);align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  transition:background 170ms,color 170ms,border-color 170ms}
+.card-arrow:hover{background:var(--navy-800);color:var(--cream-50);border-color:var(--navy-800)}
+/* ONE blue family, smooth even value-ramp — no hotspot. All four stops are the
+   same hue (~207°), only lightness changes, so it reads as a single gradient. */
+.hero-gradient{position:relative;isolation:isolate;
+  background:linear-gradient(145deg,#13598C 0%,#0C426B 40%,#08324E 72%,#05273B 100%)}
+/* barely-there same-hue wash for depth — large + low-alpha so it never blobs */
+.hero-gradient::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(150% 170% at 70% -20%, rgba(46,128,196,.18), transparent 72%)}
+/* glassy orb that floats the gauge clear of the background mark */
+.gauge-orb{position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(255,255,255,.10), rgba(255,255,255,.03) 68%, transparent);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), 0 8px 30px rgba(0,0,0,.18)}
 /* ── Rich text editor ── */
 .rte{border:1.5px solid var(--border-default);border-radius:var(--radius-md);overflow:hidden;background:var(--paper)}
 .rte:focus-within{border-color:var(--navy-600)}
@@ -358,6 +382,19 @@ function absenceStreak(id, att) {
   }
   return n;
 }
+// Consecutive Sundays *present* (most recent recorded first); skips unmarked
+// Sundays, breaks on the first absence. Mirrors absenceStreak.
+function presenceStreak(id, att) {
+  const keys = Object.keys(att).sort().reverse();
+  let n=0;
+  for(const k of keys){
+    const r=att[k];
+    if(!(id in r)) continue;
+    if(r[id]!==true) break;
+    n++;
+  }
+  return n;
+}
 function attendanceRate(id, att, weeks=8) {
   const keys=Object.keys(att).sort().reverse().slice(0,weeks);
   const marked=keys.filter(k=>id in att[k]);
@@ -374,7 +411,7 @@ function studentHistory(id, att, n=10) {
 }
 
 function fireConfetti() {
-  const colors=['#EF6F5E','#4C9A6B','#4DA3C4','#8E6FB0','#03273F','#F5C04E'];
+  const colors=['#F4674F','#16B981','#4DA3C4','#8E6FB0','#2480C4','#F5C04E'];
   const root=document.createElement('div');
   root.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden';
   for(let i=0;i<70;i++){
@@ -478,6 +515,9 @@ const ICONS = {
   'link2':'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5',
   'quote':'M6 17h3l2-4V7H5v6h3zM14 17h3l2-4V7h-6v6h3z',
   'arrow-up-right':'M7 17 17 7M8 7h9v9',
+  'arrow-down-right':'M7 7l10 10M17 8v9H8',
+  'message-circle':'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z',
+  'trophy':'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 4H4v2a3 3 0 0 0 3 3M17 4h3v2a3 3 0 0 1-3 3',
   'flame':'M12 22a7 7 0 0 0 7-7c0-3-2-5-3-7-1.5 1-2 2-2 3 0-2-1-4-3-6-.5 3-2 4-3 6s-3 4-3 7a7 7 0 0 0 7 4z',
 };
 
@@ -520,7 +560,7 @@ function Btn({ variant='primary', size='md', full, disabled, iL, iR, onClick, ch
     secondary:{bg:'var(--surface-card)',fg:'var(--text-brand)',border:'1.5px solid var(--text-brand)'},
     ghost:{bg:'transparent',fg:'var(--text-brand)',border:'1px solid transparent'},
     danger:{bg:'var(--danger-500)',fg:'#fff',border:'1px solid var(--danger-500)'},
-    leaf:{bg:'var(--leaf-100)',fg:'#2F6B47',border:'1px solid var(--leaf-100)'},
+    leaf:{bg:'var(--leaf-100)',fg:'#0E7B55',border:'1px solid var(--leaf-100)'},
   }[variant]||{bg:'var(--navy-800)',fg:'var(--cream-50)',border:'1px solid var(--navy-800)'};
   return (
     <button disabled={disabled} onClick={onClick} style={{
@@ -542,10 +582,10 @@ function Btn({ variant='primary', size='md', full, disabled, iL, iR, onClick, ch
 }
 
 function Badge({ tone='navy', size='md', children, style={} }) {
-  const t={navy:{bg:'var(--navy-100)',fg:'#0A3956'},
-            coral:{bg:'var(--coral-100)',fg:'#B23A2C'},leaf:{bg:'var(--leaf-100)',fg:'#2F6B47'},
+  const t={navy:{bg:'var(--navy-100)',fg:'var(--navy-800)'},
+            coral:{bg:'var(--coral-100)',fg:'#B23A2C'},leaf:{bg:'var(--leaf-100)',fg:'#0E7B55'},
             sky:{bg:'var(--sky-100)',fg:'#286179'},grape:{bg:'var(--grape-100)',fg:'#5C4480'},
-            success:{bg:'var(--success-100)',fg:'#2F6B47'},warning:{bg:'var(--warning-100)',fg:'#9A6A12'},
+            success:{bg:'var(--success-100)',fg:'#0E7B55'},warning:{bg:'var(--warning-100)',fg:'#9A6A12'},
             danger:{bg:'var(--danger-100)',fg:'#A93B33'},neutral:{bg:'var(--ink-100)',fg:'var(--ink-700)'},
            }[tone]||{bg:'var(--navy-100)',fg:'var(--navy-800)'};
   const s=size==='sm'?{fontSize:'11px',padding:'2px 7px'}:{fontSize:'var(--text-xs)',padding:'4px 10px'};
@@ -555,7 +595,7 @@ function Badge({ tone='navy', size='md', children, style={} }) {
 
 function Av({ name='', size='md', style={} }) {
   const dim={xs:26,sm:34,md:42,lg:54}[size]||42;
-  const cols=['#EF6F5E','#4C9A6B','#4DA3C4','#8E6FB0','#2E6A88','#0A3956'];
+  const cols=['#F4674F','#16B981','#4DA3C4','#8E6FB0','#2480C4','#0C4775'];
   const init=name.split(' ').filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase()||'?';
   const bg=cols[[...name].reduce((a,c)=>a+c.charCodeAt(0),0)%cols.length];
   return <div style={{width:dim,height:dim,borderRadius:'50%',flexShrink:0,display:'inline-flex',
@@ -565,35 +605,35 @@ function Av({ name='', size='md', style={} }) {
   </div>;
 }
 
-function StatTile({ icon, value, label, trend=null, tone='navy' }) {
+function StatTile({ icon, value, label, trend=null, caption, tone='navy' }) {
   // Count up numeric values (including "86%" style strings)
   const num = typeof value==='number' ? value
     : (typeof value==='string' && /^\d+%$/.test(value)) ? parseInt(value,10) : null;
   const counted = useCountUp(num===null?0:num);
   const display = num===null ? value : (typeof value==='string' ? counted+'%' : counted);
+  const up = trend && trend.dir==='up';
   return (
-    <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
-      borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
-      display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
+    <div className="dash-card stat-card" style={{padding:'var(--space-5)',
+      display:'flex',flexDirection:'column',gap:'var(--space-4)','--stat-glow':`var(--${tone}-100)`}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span style={{width:38,height:38,borderRadius:'var(--radius-md)',display:'inline-flex',
+        <span style={{width:42,height:42,borderRadius:'var(--radius-lg)',display:'inline-flex',
           alignItems:'center',justifyContent:'center',
           background:`var(--${tone}-100)`,color:`var(--${tone}-500)`}}>
-          <Icon n={icon} size={18} />
+          <Icon n={icon} size={19} />
         </span>
         {trend && (
-          <span style={{fontSize:11,fontWeight:700,
-            color:trend.dir==='down'?'var(--danger-500)':'var(--success-500)',
-            background:trend.dir==='down'?'var(--danger-100)':'var(--success-100)',
-            padding:'3px 8px',borderRadius:'var(--radius-pill)'}}>
-            {trend.dir==='down'?'▾':'▴'} {trend.value}
+          <span className="delta-chip" style={{
+            color:up?'var(--success-500)':'var(--danger-500)',
+            background:up?'var(--success-100)':'var(--danger-100)'}}>
+            <Icon n={up?'arrow-up-right':'arrow-down-right'} size={12} /> {trend.value}
           </span>
         )}
       </div>
       <div>
-        <div style={{fontSize:'var(--text-2xl)',fontWeight:800,color:'var(--text-strong)',
-          letterSpacing:'-.02em',lineHeight:1,fontVariantNumeric:'tabular-nums'}}>{display}</div>
-        <div style={{fontSize:11,color:'var(--text-muted)',marginTop:5,fontWeight:500}}>{label}</div>
+        <div style={{fontSize:'var(--text-3xl)',fontWeight:800,color:'var(--text-strong)',
+          letterSpacing:'-.025em',lineHeight:1,fontVariantNumeric:'tabular-nums'}}>{display}</div>
+        <div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:7,fontWeight:500}}>{label}</div>
+        {caption && <div style={{fontSize:11,color:'var(--text-subtle)',marginTop:3,fontWeight:500}}>{caption}</div>}
       </div>
     </div>
   );
@@ -809,7 +849,7 @@ function ClassesOverview({ classes, students, todayAtt, onOpenClass, onNav, colu
 function AlertsCard({ alerts, attendance, onNav }) {
   return (
     <div style={{background:'var(--coral-100)',borderRadius:'var(--radius-lg)',
-      padding:'var(--space-4)',border:'1px solid rgba(239,111,94,.2)'}}>
+      padding:'var(--space-4)',border:'1px solid rgba(244,103,79,.2)'}}>
       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,color:'#B23A2C'}}>
         <Icon n="alert-circle" size={17} />
         <span style={{fontWeight:700,fontSize:'var(--text-sm)'}}>
@@ -869,8 +909,7 @@ function TrendCard({ recordedKeys, rateOf, attendance, height=110, fill }) {
   return (
     <div style={fill?{display:'flex',flexDirection:'column',height:'100%'}:undefined}>
       <SectionLabel>Attendance trend</SectionLabel>
-      <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',
-        borderRadius:'var(--radius-lg)',padding:'var(--space-4)',boxShadow:'var(--shadow-xs)',
+      <div className="dash-card" style={{padding:'var(--space-5)',
         flex:fill?1:'none',display:'flex',alignItems:'flex-end',position:'relative'}}>
         {hover!==null && (()=>{ const k=bars[hover]; const r=attendance&&attendance[k]||{};
           const p=Object.values(r).filter(Boolean).length, tot=Object.keys(r).length;
@@ -926,15 +965,85 @@ function Donut({ segments, size=150, thickness=18, center, sub }) {
   );
 }
 
+// Radial "attendance vs goal" gauge — 270° arc with a goal marker tick.
+// onDark renders cream/navy-tinted strokes for use on the hero banner.
+function RadialGauge({ value, goal=85, size=140, onDark=false, center, label }) {
+  const has = value!==null && value!==undefined && !Number.isNaN(value);
+  const v = Math.max(0,Math.min(100,Math.round(has?value:0)));
+  const stroke = Math.max(10,Math.round(size*0.10));
+  const r = (size-stroke)/2 - 2;
+  const cx=size/2, cy=size/2;
+  const sweep=270, start=135, C=2*Math.PI*r, arc=C*sweep/360, val=arc*(v/100);
+  const reached = has && v>=goal;
+  const track = onDark?'rgba(255,255,255,.13)':'var(--surface-sunken)';
+  const col = !has ? (onDark?'rgba(255,255,255,.28)':'var(--ink-300)')
+    : reached ? (onDark?'#54E0A0':'var(--leaf-500)') : (onDark?'#4FB4F2':'var(--navy-500)');
+  const glow = !has?'transparent':reached?(onDark?'rgba(84,224,160,.55)':'rgba(22,185,129,.40)')
+    :(onDark?'rgba(79,180,242,.55)':'rgba(36,128,196,.30)');
+  // goal marker — a clean rounded bead sitting on the track centreline
+  const ga = (start + goal/100*sweep) * Math.PI/180;
+  const gx=cx+Math.cos(ga)*r, gy=cy+Math.sin(ga)*r;
+  const centerTxt = center!==undefined ? center : (has?v+'%':'—');
+  const sub = label!==undefined ? label : (!has?'no data':reached?'goal met ✓':'of '+goal+'% goal');
+  const gid='gg'+Math.round(size);
+  return (
+    <div style={{position:'relative',width:size,height:size,flexShrink:0}}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <g transform={`rotate(${start} ${cx} ${cy})`}>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={track} strokeWidth={stroke}
+            strokeDasharray={`${arc} ${C}`} strokeLinecap="round" />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={col} strokeWidth={stroke}
+            strokeDasharray={`${val} ${C}`} strokeLinecap="round"
+            style={{animation:'donutGrow 900ms cubic-bezier(0.22,1,0.36,1) both',
+              filter:`drop-shadow(0 0 ${Math.round(size*0.05)}px ${glow})`}} />
+        </g>
+        {has && (<>
+          <circle cx={gx} cy={gy} r={stroke*0.28} fill={onDark?'#fff':'var(--surface-card)'}
+            stroke={onDark?'rgba(0,0,0,.18)':'var(--border-default)'} strokeWidth="1.25" />
+        </>)}
+      </svg>
+      <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
+        <div style={{fontSize:size*0.28,fontWeight:800,lineHeight:1,letterSpacing:'-.03em',fontVariantNumeric:'tabular-nums',
+          color:onDark?'#fff':'var(--text-strong)'}}>{centerTxt}</div>
+        <div style={{fontSize:Math.max(9.5,size*0.078),marginTop:size*0.03,fontWeight:600,letterSpacing:'.01em',
+          color:onDark?'rgba(208,230,245,.9)':'var(--text-muted)'}}>{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+// Compact attendance sparkline from per-Sunday history ('p'/'a'/'u').
+function Sparkline({ hist, w=140, h=46 }) {
+  if(!hist||!hist.length) return null;
+  const pad=8, n=hist.length;
+  const xOf=i=>pad+(w-2*pad)*(n<=1?0.5:i/(n-1));
+  const yOf=m=>m==='p'?pad:m==='a'?h-pad:h/2;
+  const pts=hist.map((it,i)=>({x:xOf(i),y:yOf(it.mark),m:it.mark}));
+  const line=pts.map((p,i)=>`${i?'L':'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  const area=`${line} L${pts[n-1].x.toFixed(1)} ${h-pad} L${pts[0].x.toFixed(1)} ${h-pad} Z`;
+  const col={p:'var(--leaf-500)',a:'var(--coral-500)',u:'var(--ink-300)'};
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{display:'block',maxWidth:'100%'}}>
+      <defs><linearGradient id="spkGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="var(--navy-500)" stopOpacity=".22" />
+        <stop offset="1" stopColor="var(--navy-500)" stopOpacity="0" />
+      </linearGradient></defs>
+      <path d={area} fill="url(#spkGrad)" />
+      <path d={line} fill="none" stroke="var(--navy-600)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={p.m==='u'?2:3.2} fill={col[p.m]}
+        stroke="var(--surface-card)" strokeWidth="1.5" />)}
+    </svg>
+  );
+}
+
 function AttendanceDonutCard({ present, absent, unmarked, total, dateLabel, onNav }) {
   const rate=total?Math.round(present/total*100):0;
   const segs=[{value:present,color:'var(--leaf-500)'},{value:absent,color:'var(--coral-500)'},{value:unmarked,color:'var(--ink-200)'}];
   const legend=[['Present',present,'var(--leaf-500)'],['Absent',absent,'var(--coral-500)'],['Unmarked',unmarked,'var(--ink-300)']];
   return (
-    <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-lg)',
-      padding:'var(--space-5)',boxShadow:'var(--shadow-xs)',height:'100%'}}>
-      <SectionLabel action={<button onClick={()=>onNav&&onNav('attendance')} aria-label="Open attendance"
-        style={{background:'none',border:'none',cursor:'pointer',color:'var(--text-muted)',display:'flex'}}><Icon n="arrow-up-right" size={15}/></button>}>
+    <div className="dash-card" style={{padding:'var(--space-5)',height:'100%'}}>
+      <SectionLabel action={<button className="card-arrow" onClick={()=>onNav&&onNav('attendance')} aria-label="Open attendance">
+        <Icon n="arrow-up-right" size={15}/></button>}>
         Attendance overview · {dateLabel}
       </SectionLabel>
       <div style={{display:'flex',alignItems:'center',gap:'var(--space-5)',flexWrap:'wrap'}}>
@@ -957,8 +1066,7 @@ function ClassLeaderboardCard({ classStats, onOpenClass }) {
   const rated=classStats.filter(c=>c.rate!==null);
   const best=rated[0], worst=rated.length>1?rated[rated.length-1]:null;
   return (
-    <div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-lg)',
-      padding:'var(--space-5)',boxShadow:'var(--shadow-xs)',height:'100%',display:'flex',flexDirection:'column'}}>
+    <div className="dash-card" style={{padding:'var(--space-5)',height:'100%',display:'flex',flexDirection:'column'}}>
       <SectionLabel>Class attendance · last 8 Sundays</SectionLabel>
       <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)',flex:1}}>
         {classStats.map(({c,rate,count})=>(
@@ -1078,6 +1186,40 @@ function VisitorsCard({ list, attendance, onNav, t=s=>s }) {
   );
 }
 
+// Faithfulness streaks — children present several Sundays in a row. Celebrates consistency.
+function StreaksCard({ list, onNav, t=s=>s }) {
+  return (
+    <div>
+      <SectionLabel action={<span style={{display:'inline-flex',alignItems:'center',gap:4,color:'var(--warning-500)'}}>
+        <Icon n="trophy" size={14} /></span>}>{t('Faithfulness streaks')}</SectionLabel>
+      <div className="dash-card" style={{padding:'var(--space-4)',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
+        {list.map(({s,streak},i)=>(
+          <div key={s.id} onClick={()=>onNav&&onNav('students')}
+            style={{display:'flex',alignItems:'center',gap:11,cursor:onNav?'pointer':'default'}}>
+            <div style={{position:'relative',flexShrink:0}}>
+              <Av name={s.name} size="sm" />
+              {i===0 && <span style={{position:'absolute',top:-6,right:-6,width:18,height:18,borderRadius:'50%',
+                background:'var(--warning-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
+                boxShadow:'0 0 0 2px var(--surface-card)'}}><Icon n="trophy" size={10} /></span>}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:'var(--text-sm)',color:'var(--text-strong)',
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>{streak} Sundays present in a row</div>
+            </div>
+            <span className="delta-chip" style={{background:'var(--warning-100)',color:'var(--warning-500)',fontSize:12}}>
+              <Icon n="flame" size={12} /> {streak}
+            </span>
+          </div>
+        ))}
+        <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,paddingTop:2}}>
+          {t('Celebrate their faithfulness this Sunday.')} 🎉
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SearchBox({ onSubmit, width=250 }) {
   const [v,setV]=useState('');
   return (
@@ -1145,6 +1287,13 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
     .filter(x=>x.b&&x.b.days<=14).sort((a,b)=>a.b.days-b.b.days).slice(0,6);
   const visitors = students.filter(s=>s.visitor).slice(0,6);
 
+  // Faithfulness streaks — children present several Sundays in a row
+  const streaks = students.map(s=>({s,streak:presenceStreak(s.id,attendance)}))
+    .filter(x=>x.streak>=2).sort((a,b)=>b.streak-a.streak).slice(0,5);
+
+  // "vs last Sunday" caption shown on the trend stat tiles
+  const vsCaption = (marked>0 && prevKey) ? t('vs last Sunday') : null;
+
   const isDesk = useMedia('(min-width:1024px)');
   const hour = new Date().getHours();
   const greeting = t(hour<12?'Good morning':hour<18?'Good afternoon':'Good evening');
@@ -1182,7 +1331,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
                 border:'1px solid var(--border-default)',cursor:'pointer',fontFamily:'var(--font-sans)',
                 fontSize:11,fontWeight:700,
                 background:cloud.status==='synced'?'var(--leaf-100)':cloud.status==='error'?'var(--danger-100)':'var(--surface-card)',
-                color:cloud.status==='synced'?'#2F6B47':cloud.status==='error'?'#A93B33':'var(--text-muted)'}}>
+                color:cloud.status==='synced'?'#0E7B55':cloud.status==='error'?'#A93B33':'var(--text-muted)'}}>
               <Icon n="cloud" size={14} />
               {cloud.status==='synced'?'Synced':cloud.status==='syncing'?'Syncing…':cloud.status==='error'?'Error':'Sign in'}
             </button>
@@ -1194,18 +1343,17 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
       {/* Stats — 4 across */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'var(--space-4)'}}>
         <StatTile icon="users" value={students.length} label="Students enrolled" tone="navy" />
-        <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':`Present ${fmtShort(today)}`} tone="leaf" trend={presentTrend} />
-        <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?(isSunday?'Attendance today':'Attendance '+fmtShort(today)):'Last attendance'} tone="sky" trend={rateTrend} />
+        <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':`Present ${fmtShort(today)}`} tone="leaf" trend={presentTrend} caption={presentTrend?vsCaption:null} />
+        <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?(isSunday?'Attendance today':'Attendance '+fmtShort(today)):'Last attendance'} tone="sky" trend={rateTrend} caption={rateTrend?vsCaption:null} />
         <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'} />
       </div>
 
       {/* Featured row: Sunday CTA card + attendance donut */}
       <div style={{display:'grid',gridTemplateColumns:(marked>0||students.length>0)?'1.05fr 1fr':'1fr',gap:'var(--space-4)',alignItems:'stretch'}}>
-        <div style={{background:'var(--navy-800)',borderRadius:'var(--radius-xl)',padding:'var(--space-6)',
-          color:'var(--cream-50)',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',justifyContent:'center',minHeight:200,
-          backgroundImage:'radial-gradient(110% 140% at 100% 0%,rgba(143,178,198,.22),transparent 55%)'}}>
-          <Logo color="var(--cream-50)" size={230} style={{position:'absolute',right:-40,bottom:-50,opacity:.07,pointerEvents:'none'}} />
-          <div style={{position:'relative'}}>
+        <div className="hero-gradient" style={{borderRadius:'var(--radius-2xl)',padding:'var(--space-7)',
+          color:'var(--cream-50)',position:'relative',overflow:'hidden',display:'flex',alignItems:'center',gap:'var(--space-7)',minHeight:218}}>
+          <Logo color="var(--cream-50)" size={300} style={{position:'absolute',left:-90,bottom:-90,opacity:.04,pointerEvents:'none'}} />
+          <div style={{position:'relative',flex:1,minWidth:0}}>
             <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--navy-100)'}}>
               {isSunday?'This Sunday':isUpcoming?'Upcoming · Sunday':'Class day · Sunday'}
             </div>
@@ -1225,6 +1373,16 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
                 style={{color:'var(--cream-50)',borderColor:'rgba(251,247,240,.3)'}}>Plan a lesson</Btn>
             </div>
           </div>
+          {rateToday!==null && (
+            <div style={{position:'relative',flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+              <div className="gauge-orb" style={{padding:13}}>
+                <RadialGauge value={rateToday} goal={85} size={150} onDark />
+              </div>
+              <div style={{fontSize:10.5,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'rgba(208,230,245,.85)'}}>
+                {marked>0?(isSunday?'Today':fmtShort(today)):'Last Sunday'}
+              </div>
+            </div>
+          )}
         </div>
         {students.length>0 && <AttendanceDonutCard present={present} absent={dAbsent} unmarked={dUnmarked} total={students.length} dateLabel={donutDate} onNav={onNav} />}
       </div>
@@ -1253,6 +1411,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
           {showChecklist && <ChecklistCard steps={steps} onNav={onNav} />}
           {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
+          {streaks.length>0 && <StreaksCard list={streaks} onNav={onNav} t={t} />}
           {birthdays.length>0 && <BirthdaysCard list={birthdays} t={t} />}
           {visitors.length>0 && <VisitorsCard list={visitors} attendance={attendance} onNav={onNav} t={t} />}
           {upcoming && <NextSessionCard upcoming={upcoming} />}
@@ -1267,10 +1426,9 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
   return (
     <div className="page" style={{maxWidth:680,margin:'0 auto'}}>
       {/* Hero banner */}
-      <div style={{background:'var(--navy-800)',borderRadius:'0 0 var(--radius-2xl) var(--radius-2xl)',
-        padding:'var(--space-6) var(--space-5)',color:'var(--cream-50)',position:'relative',overflow:'hidden',
-        backgroundImage:'radial-gradient(120% 140% at 100% 0%,rgba(143,178,198,.2),transparent 55%)'}}>
-        <Logo color="var(--cream-50)" size={200} style={{position:'absolute',right:-30,top:-30,opacity:.06,pointerEvents:'none'}} />
+      <div className="hero-gradient" style={{borderRadius:'0 0 var(--radius-2xl) var(--radius-2xl)',
+        padding:'var(--space-6) var(--space-5)',color:'var(--cream-50)',position:'relative',overflow:'hidden'}}>
+        <Logo color="var(--cream-50)" size={230} style={{position:'absolute',left:-70,bottom:-80,opacity:.04,pointerEvents:'none'}} />
         <div style={{position:'relative'}}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:'var(--space-5)'}}>
             <Logo color="var(--cream-50)" size={34} />
@@ -1291,17 +1449,22 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
               <Icon n="settings" size={18} />
             </button>
           </div>
-          <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--navy-100)'}}>
-            {fmtFull(realToday)}
+          <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--navy-100)'}}>
+                {fmtFull(realToday)}
+              </div>
+              <h1 style={{fontSize:'var(--text-2xl)',fontWeight:800,marginTop:6,letterSpacing:'-.02em',lineHeight:1.15}}>
+                {greeting}
+              </h1>
+              <p style={{fontSize:'var(--text-sm)',color:'var(--navy-100)',marginTop:4,lineHeight:1.5}}>
+                {students.length} students · {marked>0
+                  ? `${present} checked in ${isSunday?'today':'on '+fmtShort(today)}`
+                  : (isSunday?'No attendance yet today':isUpcoming?`Sunday ${fmtShort(today)} coming up`:`Sunday ${fmtShort(today)} not recorded yet`)}
+              </p>
+            </div>
+            {rateToday!==null && <div className="gauge-orb" style={{padding:9}}><RadialGauge value={rateToday} goal={85} size={100} onDark /></div>}
           </div>
-          <h1 style={{fontSize:'var(--text-2xl)',fontWeight:800,marginTop:6,letterSpacing:'-.02em',lineHeight:1.15}}>
-            {greeting}
-          </h1>
-          <p style={{fontSize:'var(--text-sm)',color:'var(--navy-100)',marginTop:4,lineHeight:1.5}}>
-            {students.length} students · {marked>0
-              ? `${present} checked in ${isSunday?'today':'on '+fmtShort(today)}`
-              : (isSunday?'No attendance yet today':isUpcoming?`Sunday ${fmtShort(today)} coming up`:`Sunday ${fmtShort(today)} not recorded yet`)}
-          </p>
           <div style={{display:'flex',gap:10,marginTop:16,flexWrap:'wrap'}}>
             <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>
               {t('Take attendance')}
@@ -1318,8 +1481,8 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         {/* Stats — 2×2 grid */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-3)'}}>
           <StatTile icon="users" value={students.length} label="Students enrolled" tone="navy" />
-          <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':`Present ${fmtShort(today)}`} tone="leaf" trend={presentTrend} />
-          <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?(isSunday?'Attendance today':'Attendance '+fmtShort(today)):'Last attendance'} tone="sky" trend={rateTrend} />
+          <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':`Present ${fmtShort(today)}`} tone="leaf" trend={presentTrend} caption={presentTrend?vsCaption:null} />
+          <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?(isSunday?'Attendance today':'Attendance '+fmtShort(today)):'Last attendance'} tone="sky" trend={rateTrend} caption={rateTrend?vsCaption:null} />
           <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'} />
         </div>
 
@@ -1334,6 +1497,8 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         {hasClassData && <ClassLeaderboardCard classStats={classStats} onOpenClass={onOpenClass} />}
 
         {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
+
+        {streaks.length>0 && <StreaksCard list={streaks} onNav={onNav} t={t} />}
 
         {birthdays.length>0 && <BirthdaysCard list={birthdays} t={t} />}
 
@@ -1390,7 +1555,7 @@ function CloudSection({ cloud, api }) {
     connecting:{bg:'var(--sky-100)',fg:'#286179',label:'Connecting…'},
     signedout:{bg:'var(--warning-100)',fg:'#9A6A12',label:'Sign in needed'},
     syncing:{bg:'var(--sky-100)',fg:'#286179',label:'Syncing…'},
-    synced:{bg:'var(--leaf-100)',fg:'#2F6B47',label:'Synced'},
+    synced:{bg:'var(--leaf-100)',fg:'#0E7B55',label:'Synced'},
     error:{bg:'var(--danger-100)',fg:'#A93B33',label:'Sync error'},
   }[cloud.status]||{bg:'var(--ink-100)',fg:'var(--ink-700)',label:cloud.status};
 
@@ -1908,10 +2073,13 @@ function StudentSheet({ open, student, cls, attendance, onClose, onEdit }) {
   if(!student) return null;
   const rate=attendanceRate(student.id,attendance);
   const streak=absenceStreak(student.id,attendance);
+  const pstreak=presenceStreak(student.id,attendance);
   const hist=studentHistory(student.id,attendance,10);
   const presentCount=hist.filter(h=>h.mark==='p').length;
   const absentCount=hist.filter(h=>h.mark==='a').length;
   const dotColor={p:'var(--leaf-500)',a:'var(--coral-500)',u:'var(--ink-200)'};
+  const waDigits=(student.parentPhone||'').replace(/[^\d]/g,'');
+  const waText=encodeURIComponent(`Hello${student.parentName?' '+student.parentName:''}, this is from FECMY Children Ministry regarding ${student.name}.`);
 
   return (
     <Modal open={open} onClose={onClose} title="Student profile"
@@ -1935,22 +2103,36 @@ function StudentSheet({ open, student, cls, attendance, onClose, onEdit }) {
                     return b.days===0?'Birthday today!':fmtShort(dk(b.date))+(b.turning?` · ${b.turning}`:'');})()}
                 </Badge>
               )}
+              {pstreak>=3 && <Badge tone="warning"><Icon n="flame" size={11} style={{marginRight:3}} />{pstreak}× present in a row</Badge>}
               {streak>=3 && <Badge tone="coral">Absent {streak}× in a row</Badge>}
             </div>
           </div>
         </div>
 
-        {/* Quick stats */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-3)'}}>
-          {[[rate!==null?rate+'%':'—','Attendance'],[presentCount,'Present'],[absentCount,'Absent']].map(([v,l],i)=>(
-            <div key={l} style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-md)',
-              padding:'12px 8px',textAlign:'center'}}>
-              <div style={{fontSize:'var(--text-xl)',fontWeight:800,lineHeight:1,
-                color:i===0?(rate===null?'var(--text-subtle)':rate>=80?'var(--leaf-500)':rate>=60?'var(--sky-500)':'var(--coral-500)')
-                  :i===1?'var(--leaf-500)':'var(--coral-500)'}}>{v}</div>
-              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{l}</div>
+        {/* Attendance ring + sparkline + mini stats */}
+        <div style={{display:'flex',gap:'var(--space-4)',alignItems:'stretch',flexWrap:'wrap'}}>
+          <div style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-lg)',padding:'var(--space-4)',
+            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,flexShrink:0}}>
+            <RadialGauge value={rate} goal={85} size={116} />
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:'.04em',textTransform:'uppercase',color:'var(--text-muted)'}}>Attendance</div>
+          </div>
+          <div style={{flex:1,minWidth:160,display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
+            <div style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-lg)',padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:'.04em',textTransform:'uppercase',marginBottom:6}}>Recent trend</div>
+              <Sparkline hist={hist} w={220} h={44} />
             </div>
-          ))}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'var(--space-2)'}}>
+              {[[presentCount,'Present','var(--leaf-500)','check'],[absentCount,'Absent','var(--coral-500)','x'],
+                [pstreak,'Streak','var(--warning-500)','flame']].map(([v,l,col,ic])=>(
+                <div key={l} style={{background:'var(--surface-sunken)',borderRadius:'var(--radius-md)',padding:'10px 6px',textAlign:'center'}}>
+                  <div style={{fontSize:'var(--text-lg)',fontWeight:800,lineHeight:1,color:col,
+                    display:'inline-flex',alignItems:'center',gap:3}}>
+                    {l==='Streak'&&<Icon n={ic} size={13} color={col} />}{v}</div>
+                  <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* History dots */}
@@ -1983,12 +2165,19 @@ function StudentSheet({ open, student, cls, attendance, onClose, onEdit }) {
                 {student.parentPhone&&<div style={{fontSize:'var(--text-sm)',color:'var(--text-muted)',marginTop:2}}>{student.parentPhone}</div>}
               </div>
               {student.parentPhone&&(
-                <a href={`tel:${student.parentPhone}`} style={{textDecoration:'none',display:'inline-flex',
-                  alignItems:'center',gap:8,background:'var(--leaf-500)',color:'#fff',fontWeight:700,
-                  fontSize:'var(--text-sm)',padding:'10px 18px',borderRadius:'var(--radius-pill)',
-                  boxShadow:'var(--shadow-sm)'}}>
-                  <Icon n="phone" size={15} /> Call
-                </a>
+                <div style={{display:'flex',gap:8,flexShrink:0}}>
+                  <a href={`https://wa.me/${waDigits}?text=${waText}`} target="_blank" rel="noopener"
+                    aria-label="WhatsApp" title="WhatsApp" style={{textDecoration:'none',display:'inline-flex',
+                    alignItems:'center',justifyContent:'center',gap:7,background:'#25D366',color:'#fff',fontWeight:700,
+                    fontSize:'var(--text-sm)',padding:'10px 16px',borderRadius:'var(--radius-pill)',boxShadow:'var(--shadow-sm)'}}>
+                    <Icon n="message-circle" size={15} /> WhatsApp
+                  </a>
+                  <a href={`tel:${student.parentPhone}`} aria-label="Call" title="Call" style={{textDecoration:'none',display:'inline-flex',
+                    alignItems:'center',justifyContent:'center',gap:7,background:'var(--leaf-500)',color:'#fff',fontWeight:700,
+                    fontSize:'var(--text-sm)',padding:'10px 16px',borderRadius:'var(--radius-pill)',boxShadow:'var(--shadow-sm)'}}>
+                    <Icon n="phone" size={15} /> Call
+                  </a>
+                </div>
               )}
             </div>
           ) : (
@@ -2209,7 +2398,7 @@ function Attendance({ students, classes, attendance, activeClassId, setActiveCla
                 display:'flex',alignItems:'center',justifyContent:'center',gap:7,padding:'9px 14px',minWidth:118,
                 borderRadius:'var(--radius-pill)',border:`1.5px solid ${isPresent?'var(--leaf-500)':isAbsent?'var(--coral-500)':'var(--border-default)'}`,
                 background:isPresent?'var(--leaf-100)':isAbsent?'var(--coral-100)':'var(--surface-card)',
-                color:isPresent?'#2F6B47':isAbsent?'#B23A2C':'var(--text-muted)',
+                color:isPresent?'#0E7B55':isAbsent?'#B23A2C':'var(--text-muted)',
                 cursor:'pointer',fontFamily:'var(--font-sans)',fontWeight:700,fontSize:'var(--text-sm)',
                 transition:'all 150ms ease',whiteSpace:'nowrap',flexShrink:0}}>
                 <span key={isPresent?'p':isAbsent?'a':'u'} style={{display:'inline-flex',animation:'popIn 280ms cubic-bezier(0.34,1.56,0.64,1)'}}>
@@ -2840,12 +3029,12 @@ function Reports({ students, classes, attendance, t=s=>s }) {
 /* ── GUIDED TOUR ── */
 // Small on-brand mock visuals (stay in sync with the real UI; crisp at any size).
 function GV({ children, tone='navy', cross }) {
+  const navy = tone==='navy';
   return (
-    <div style={{position:'relative',height:184,borderRadius:'var(--radius-lg)',overflow:'hidden',
+    <div className={navy?'hero-gradient':undefined} style={{position:'relative',height:184,borderRadius:'var(--radius-lg)',overflow:'hidden',
       display:'flex',alignItems:'center',justifyContent:'center',padding:'var(--space-5)',
-      background: tone==='navy' ? 'var(--navy-800)' : 'var(--surface-sunken)',
-      backgroundImage: tone==='navy' ? 'radial-gradient(110% 120% at 100% 0%,rgba(143,178,198,.22),transparent 55%)' : 'none'}}>
-      {cross && <Logo color="var(--cream-50)" size={170} style={{position:'absolute',right:-34,bottom:-44,opacity:.08,pointerEvents:'none'}} />}
+      ...(navy?{}:{background:'var(--surface-sunken)'})}}>
+      {cross && <Logo color="var(--cream-50)" size={210} style={{position:'absolute',left:-58,bottom:-66,opacity:.05,pointerEvents:'none'}} />}
       <div style={{position:'relative',width:'100%'}}>{children}</div>
     </div>
   );
@@ -2862,7 +3051,7 @@ function MiniRow({ name, tone='navy', pill, pillTone='leaf', call }) {
     <span style={{width:30,height:30,borderRadius:'50%',background:`var(--${tone}-500)`,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11,flexShrink:0}}>{name.slice(0,2)}</span>
     <div style={{flex:1,minWidth:0}}><div style={{height:8,width:'62%',borderRadius:4,background:'var(--ink-200)'}} /><div style={{height:6,width:'40%',borderRadius:3,background:'var(--ink-100)',marginTop:6}} /></div>
     {call && <span style={{width:30,height:30,borderRadius:'50%',background:'var(--leaf-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon n="phone" size={13}/></span>}
-    {pill && <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'6px 12px',borderRadius:999,background:`var(--${pillTone}-100)`,color:pillTone==='leaf'?'#2F6B47':'#B23A2C',fontWeight:700,fontSize:12,whiteSpace:'nowrap'}}><Icon n={pillTone==='leaf'?'check':'x'} size={12}/>{pill}</span>}
+    {pill && <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'6px 12px',borderRadius:999,background:`var(--${pillTone}-100)`,color:pillTone==='leaf'?'#0E7B55':'#B23A2C',fontWeight:700,fontSize:12,whiteSpace:'nowrap'}}><Icon n={pillTone==='leaf'?'check':'x'} size={12}/>{pill}</span>}
   </div>;
 }
 
@@ -2913,7 +3102,7 @@ function GuideTour({ open, onClose, lang='en', setLanguage, t=s=>s }) {
       visual:<GV tone="sunken"><div style={{background:'var(--surface-card)',border:'1px solid var(--border-soft)',borderRadius:'var(--radius-md)',overflow:'hidden',boxShadow:'var(--shadow-xs)'}}>
         <div style={{height:5,background:'var(--navy-600)'}}/>
         <div style={{padding:'12px 14px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div style={{fontWeight:800,color:'var(--text-strong)',fontSize:'var(--text-sm)'}}>{L('Ages 10–14 class','ዕድሜ 10–14 ክፍል')}</div><span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:999,background:'var(--navy-100)',color:'#0A3956'}}>{L('Ages 10–14','ዕድሜ 10–14')}</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div style={{fontWeight:800,color:'var(--text-strong)',fontSize:'var(--text-sm)'}}>{L('Ages 10–14 class','ዕድሜ 10–14 ክፍል')}</div><span style={{fontSize:10,fontWeight:700,padding:'3px 9px',borderRadius:999,background:'var(--navy-100)',color:'var(--navy-800)'}}>{L('Ages 10–14','ዕድሜ 10–14')}</span></div>
           <div style={{height:7,borderRadius:4,background:'var(--surface-sunken)',marginTop:10,overflow:'hidden'}}><div style={{width:'64%',height:'100%',background:'var(--navy-600)'}}/></div>
         </div></div></GV> },
     { tag:L('Reports','ሪፖርቶች'), title:L('The whole term on one page','ሙሉ ጊዜውን በአንድ ገጽ'),
@@ -2927,7 +3116,7 @@ function GuideTour({ open, onClose, lang='en', setLanguage, t=s=>s }) {
     { tag:L('Never lose a child','አንድም ልጅ እንዳይቀር'), title:L('3-Sunday absence alerts','የ3 እሁድ መቅረት ማንቂያ'),
       body:L('If a child misses three Sundays in a row, the app flags them on the dashboard with a tap-to-call button — so you can reach out before anyone slips away.',
              'አንድ ልጅ ሦስት እሁዶችን በተከታታይ ቢቀር፣ መተግበሪያው በዳሽቦርዱ ላይ ለመደወል በሚያስችል ቁልፍ ያመለክታል — ማንም ሳይርቅ ቀድመው እንዲያገኙት።'),
-      visual:<GV tone="sunken"><div style={{background:'var(--coral-100)',border:'1px solid rgba(239,111,94,.25)',borderRadius:'var(--radius-md)',padding:'12px 14px'}}>
+      visual:<GV tone="sunken"><div style={{background:'var(--coral-100)',border:'1px solid rgba(244,103,79,.25)',borderRadius:'var(--radius-md)',padding:'12px 14px'}}>
         <div style={{display:'flex',alignItems:'center',gap:8,color:'#B23A2C',fontWeight:700,fontSize:'var(--text-sm)',marginBottom:10}}><Icon n="alert-circle" size={16}/>{L('Absent 3 Sundays','3 እሁድ ቀርቷል')}</div>
         <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper)',borderRadius:'var(--radius-md)',padding:'9px 11px'}}>
           <span style={{width:28,height:28,borderRadius:'50%',background:'var(--sky-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11}}>ና</span>
@@ -2940,7 +3129,7 @@ function GuideTour({ open, onClose, lang='en', setLanguage, t=s=>s }) {
       visual:<GV tone="navy"><div style={{textAlign:'center',color:'var(--cream-50)'}}>
         <span style={{display:'inline-flex',width:54,height:54,borderRadius:'var(--radius-lg)',background:'rgba(251,247,240,.12)',alignItems:'center',justifyContent:'center'}}><Icon n="cloud" size={26}/></span>
         <div style={{display:'flex',gap:-8,justifyContent:'center',marginTop:14}}>
-          {['S','T','Y'].map((a,k)=>(<span key={a} style={{width:30,height:30,borderRadius:'50%',background:['#EF6F5E','#4DA3C4','#4C9A6B'][k],color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:12,marginLeft:k?-8:0,border:'2px solid var(--navy-800)'}}>{a}</span>))}
+          {['S','T','Y'].map((a,k)=>(<span key={a} style={{width:30,height:30,borderRadius:'50%',background:['#F4674F','#4DA3C4','#16B981'][k],color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:12,marginLeft:k?-8:0,border:'2px solid var(--navy-800)'}}>{a}</span>))}
         </div>
         <div style={{fontSize:'var(--text-xs)',color:'var(--navy-100)',marginTop:10}}>{L('Synced across the whole team','ከመላው ቡድን ጋር ተመሳስሏል')}</div>
       </div></GV> },
@@ -2973,8 +3162,8 @@ function GuideTour({ open, onClose, lang='en', setLanguage, t=s=>s }) {
             <Icon n="globe" size={13} color="var(--text-muted)" />{am?'EN':'አማ'}
           </button>
           <button onClick={onClose} aria-label="Close" style={{position:'absolute',top:'var(--space-4)',right:'var(--space-4)',zIndex:2,
-            width:32,height:32,borderRadius:'50%',border:'none',background:'rgba(255,255,255,.18)',color:'var(--cream-50)',
-            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="x" size={16}/></button>
+            width:32,height:32,borderRadius:'50%',border:'1px solid var(--border-soft)',background:'var(--paper)',color:'var(--text-strong)',
+            boxShadow:'var(--shadow-sm)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="x" size={16}/></button>
           <div key={i} style={{animation:'fadeUp 240ms cubic-bezier(0.22,1,0.36,1)'}}>{s.visual}</div>
         </div>
         <div style={{padding:'var(--space-5)'}}>
