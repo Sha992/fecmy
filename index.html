@@ -88,10 +88,14 @@ input,textarea,select,button{font-family:var(--font-sans)}
   letter-spacing:.02em;color:var(--text-muted);transition:color 120ms ease;
 }
 .nav-btn.active{color:var(--nav-active)}
-.page{padding-bottom:calc(96px + env(safe-area-inset-bottom));min-height:100dvh}
+.page{padding-bottom:calc(96px + env(safe-area-inset-bottom));min-height:100dvh;padding-top:env(safe-area-inset-top)}
+/* brand-blue backdrop behind the iOS status bar in standalone (home-screen) mode,
+   so white status text stays readable on every screen */
+.safe-top{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#13598C;z-index:95;pointer-events:none}
 @media(min-width:768px){
   .bottom-nav{display:none}
-  .page{padding-bottom:0;min-height:unset}
+  .page{padding-bottom:0;min-height:unset;padding-top:0}
+  .safe-top{display:none}
   .desktop-shell{display:grid;grid-template-columns:var(--side-w) 1fr;min-height:100vh;transition:grid-template-columns 220ms cubic-bezier(0.22,1,0.36,1)}
   .desktop-shell.collapsed{--side-w:76px}
   .desktop-sidebar{display:flex!important}
@@ -1486,12 +1490,13 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
             </div>
             {rateToday!==null && <div className="gauge-orb" style={{padding:9}}><RadialGauge value={rateToday} goal={85} size={100} onDark /></div>}
           </div>
-          <div style={{display:'flex',gap:10,marginTop:16,flexWrap:'wrap'}}>
-            <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}>
+          <div style={{display:'flex',gap:10,marginTop:18}}>
+            <Btn variant="accent" size="sm" iL={<Icon n="check-circle-2" size={15} />} onClick={()=>onNav('attendance')}
+              style={{flex:1}}>
               {t('Take attendance')}
             </Btn>
             <Btn variant="ghost" size="sm" onClick={()=>onNav('students')}
-              style={{color:'var(--cream-50)',borderColor:'rgba(251,247,240,.3)'}}>
+              style={{flex:1,color:'var(--cream-50)',borderColor:'rgba(251,247,240,.3)'}}>
               {t('View students')}
             </Btn>
           </div>
@@ -1501,10 +1506,14 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
       <div style={{padding:'var(--space-4) var(--space-4) 0',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         {/* Stats — 2×2 grid */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'var(--space-3)'}}>
-          <StatTile icon="users" value={students.length} label="Students enrolled" tone="navy" />
-          <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':`Present ${fmtShort(today)}`} tone="leaf" trend={presentTrend} caption={presentTrend?vsCaption:null} />
-          <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label={marked>0?(isSunday?'Attendance today':'Attendance '+fmtShort(today)):'Last attendance'} tone="sky" trend={rateTrend} caption={rateTrend?vsCaption:null} />
-          <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'} />
+          <StatTile icon="users" value={students.length} label="Students enrolled" tone="navy"
+            caption={classes.length>0?`${classes.length} ${classes.length===1?'class':'classes'}`:'enrolled'} />
+          <StatTile icon="check-circle-2" value={marked>0?present:'—'} label={isSunday?'Present today':'Present'} tone="leaf"
+            trend={presentTrend} caption={presentTrend?vsCaption:(marked>0?'this Sunday':'awaiting')} />
+          <StatTile icon="percent" value={rateToday!==null?rateToday+'%':'—'} label="Attendance" tone="sky"
+            trend={rateTrend} caption={rateTrend?vsCaption:(rateToday!==null?(marked>0?'this Sunday':'last recorded'):'no data')} />
+          <StatTile icon="bell-ring" value={alerts.length} label="Need follow-up" tone={alerts.length?'coral':'grape'}
+            caption={alerts.length?'reach out soon':'all caught up'} />
         </div>
 
         {showChecklist && <ChecklistCard steps={steps} onNav={onNav} />}
@@ -3622,6 +3631,7 @@ function App() {
     <>
       {/* Mobile */}
       <div style={{display:'block'}} className="desktop-hidden">
+        <div className="safe-top" />
         <div key={tab} className="screen-enter">{screens[tab]}</div>
         <nav className="bottom-nav">
           {TABS.map(({id,i,l})=>(
