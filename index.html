@@ -1186,32 +1186,46 @@ function VisitorsCard({ list, attendance, onNav, t=s=>s }) {
   );
 }
 
-// Faithfulness streaks — children present several Sundays in a row. Celebrates consistency.
-function StreaksCard({ list, onNav, t=s=>s }) {
+// Faithfulness — children present on EVERY recorded Sunday so far. Celebrates perfect attendance.
+function StreaksCard({ list, sundays, onNav, t=s=>s }) {
+  const shown=list.slice(0,6);
+  const extra=list.length-shown.length;
   return (
     <div>
       <SectionLabel action={<span style={{display:'inline-flex',alignItems:'center',gap:4,color:'var(--warning-500)'}}>
         <Icon n="trophy" size={14} /></span>}>{t('Faithfulness streaks')}</SectionLabel>
       <div className="dash-card" style={{padding:'var(--space-4)',display:'flex',flexDirection:'column',gap:'var(--space-3)'}}>
-        {list.map(({s,streak},i)=>(
+        <div style={{fontSize:'var(--text-sm)',fontWeight:700,color:'var(--text-strong)',lineHeight:1.4}}>
+          {list.length} {list.length===1?t('child has'):t('children have')} {t('perfect attendance')}
+          <div style={{fontSize:11,fontWeight:500,color:'var(--text-muted)',marginTop:2}}>
+            {t('Present every one of the last')} {sundays} {t('Sundays')}.
+          </div>
+        </div>
+        {shown.map(s=>(
           <div key={s.id} onClick={()=>onNav&&onNav('students')}
             style={{display:'flex',alignItems:'center',gap:11,cursor:onNav?'pointer':'default'}}>
             <div style={{position:'relative',flexShrink:0}}>
               <Av name={s.name} size="sm" />
-              {i===0 && <span style={{position:'absolute',top:-6,right:-6,width:18,height:18,borderRadius:'50%',
-                background:'var(--warning-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
-                boxShadow:'0 0 0 2px var(--surface-card)'}}><Icon n="trophy" size={10} /></span>}
+              <span style={{position:'absolute',bottom:-3,right:-3,width:16,height:16,borderRadius:'50%',
+                background:'var(--leaf-500)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
+                boxShadow:'0 0 0 2px var(--surface-card)'}}><Icon n="check" size={9} /></span>
             </div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontWeight:600,fontSize:'var(--text-sm)',color:'var(--text-strong)',
                 overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.name}</div>
-              <div style={{fontSize:11,color:'var(--text-muted)'}}>{streak} Sundays present in a row</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>{t('Never missed a Sunday')}</div>
             </div>
-            <span className="delta-chip" style={{background:'var(--warning-100)',color:'var(--warning-500)',fontSize:12}}>
-              <Icon n="flame" size={12} /> {streak}
+            <span className="delta-chip" style={{background:'var(--leaf-100)',color:'var(--leaf-500)',fontSize:11,fontWeight:700}}>
+              {sundays}/{sundays}
             </span>
           </div>
         ))}
+        {extra>0 && (
+          <button onClick={()=>onNav&&onNav('students')} style={{background:'none',border:'none',cursor:'pointer',
+            fontSize:11,fontWeight:600,color:'var(--link)',textAlign:'left',padding:0,fontFamily:'var(--font-sans)'}}>
+            +{extra} {t('more')}
+          </button>
+        )}
         <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.5,paddingTop:2}}>
           {t('Celebrate their faithfulness this Sunday.')} 🎉
         </div>
@@ -1287,9 +1301,12 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
     .filter(x=>x.b&&x.b.days<=14).sort((a,b)=>a.b.days-b.b.days).slice(0,6);
   const visitors = students.filter(s=>s.visitor).slice(0,6);
 
-  // Faithfulness streaks — children present several Sundays in a row
-  const streaks = students.map(s=>({s,streak:presenceStreak(s.id,attendance)}))
-    .filter(x=>x.streak>=2).sort((a,b)=>b.streak-a.streak).slice(0,5);
+  // Faithfulness — children present on EVERY recorded Sunday (never missed, never
+  // unmarked). Only shown once there are 4+ recorded Sundays so it means something.
+  const perfectKids = recordedKeys.length>=4
+    ? students.filter(s=>recordedKeys.every(k=>attendance[k][s.id]===true))
+              .sort((a,b)=>a.name.localeCompare(b.name,'am'))
+    : [];
 
   // "vs last Sunday" caption shown on the trend stat tiles
   const vsCaption = (marked>0 && prevKey) ? t('vs last Sunday') : null;
@@ -1411,7 +1428,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
         <div style={{display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
           {showChecklist && <ChecklistCard steps={steps} onNav={onNav} />}
           {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
-          {streaks.length>0 && <StreaksCard list={streaks} onNav={onNav} t={t} />}
+          {perfectKids.length>0 && <StreaksCard list={perfectKids} sundays={recordedKeys.length} onNav={onNav} t={t} />}
           {birthdays.length>0 && <BirthdaysCard list={birthdays} t={t} />}
           {visitors.length>0 && <VisitorsCard list={visitors} attendance={attendance} onNav={onNav} t={t} />}
           {upcoming && <NextSessionCard upcoming={upcoming} />}
@@ -1498,7 +1515,7 @@ function Dashboard({ students, attendance, sessions, classes=[], onNav, onReset,
 
         {alerts.length>0 && <AlertsCard alerts={alerts} attendance={attendance} onNav={onNav} />}
 
-        {streaks.length>0 && <StreaksCard list={streaks} onNav={onNav} t={t} />}
+        {perfectKids.length>0 && <StreaksCard list={perfectKids} sundays={recordedKeys.length} onNav={onNav} t={t} />}
 
         {birthdays.length>0 && <BirthdaysCard list={birthdays} t={t} />}
 
